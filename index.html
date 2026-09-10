@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>社伝 — 神社の由緒を集めて構造化する</title>
+<meta name="description" content="日本の神社の社伝（由緒）を、戦前の地誌1,723冊・各県神社庁・Wikipedia から機械的に集めて構造化したもの。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F7F6F2; --surface:#FFFFFF; --surface-2:#FBFAF7;
+  --ink:#16181C; --muted:#63697A; --faint:#949AA6; --line:#E1DFD8; --line-2:#C9C6BC;
+  --shu:#B23A2E; --shu-soft:#F4E5E2; --ai:#4C6076; --kin:#9A7B33;
+  --f-d:"Zen Old Mincho",'Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-b:"Zen Kaku Gothic New",'Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --f-m:"Roboto Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#101216; --surface:#171A1F; --surface-2:#1C1F25;
+  --ink:#E9E7E1; --muted:#9AA1AE; --faint:#6B7280; --line:#282C33; --line-2:#3A3F48;
+  --shu:#E0685A; --shu-soft:#2E1D1A; --ai:#7C93AC; --kin:#C9A455;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);
+  line-height:1.85;-webkit-font-smoothing:antialiased}
+.wrap{max-width:800px;margin:0 auto;padding:52px 20px 90px}
+header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:30px}
+.eyebrow{font-family:var(--f-m);font-size:11px;letter-spacing:.18em;color:var(--muted);
+  margin:0 0 8px;text-transform:uppercase}
+h1{font-family:var(--f-d);font-weight:700;font-size:clamp(32px,6vw,46px);
+  letter-spacing:.12em;margin:0 0 12px}
+.lede{margin:0;color:var(--muted);font-size:15px;max-width:60ch}
+h2{font-family:var(--f-d);font-size:20px;letter-spacing:.08em;margin:44px 0 14px;
+  padding-bottom:6px;border-bottom:1px solid var(--line-2)}
+p{margin:0 0 14px}
+a{color:var(--ai)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:6px 0 0}
+.card{display:block;text-decoration:none;color:inherit;background:var(--surface);
+  border:1px solid var(--line);border-left:4px solid var(--shu);border-radius:2px;
+  padding:16px 18px;transition:transform .12s ease,box-shadow .12s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.card h3{font-family:var(--f-d);font-size:19px;margin:0 0 5px;letter-spacing:.05em}
+.card p{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
+.card.k{border-left-color:var(--kin)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:0 0 16px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-m);font-size:10.5px;letter-spacing:.09em;color:var(--muted);
+  font-weight:500;white-space:nowrap}
+td.n{font-family:var(--f-m);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+tr.tot td{font-weight:700;border-top:2px solid var(--line-2);border-bottom:0}
+code{font-family:var(--f-m);font-size:12.5px;background:var(--surface-2);
+  padding:1px 5px;border-radius:2px}
+.note{background:var(--surface-2);border-left:3px solid var(--kin);padding:12px 16px;
+  font-size:13.5px;border-radius:2px;margin:0 0 16px}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">hacchake / shaden</p>
+  <h1>社伝</h1>
+  <p class="lede">日本の神社の<b>由緒</b>を、戦前の地誌・各県神社庁・Wikipedia・現地の由緒板から
+    機械的に集めて構造化したもの。もとは饒速日命をめぐる社伝が
+    『先代旧事本紀』『日本書紀』『新撰姓氏録』にどれだけ依拠しているかを測る研究だった。</p>
+</header>
+
+<div class="cards">
+  <a class="card" href="tenbyo.html">
+    <h3>社伝点描図</h3>
+    <p>全国 70,393 社を、地図画像を使わず座標の点だけで描いた図。社の分布そのものから
+       国土の輪郭が現れる。点を押すと祭神・例祭・社伝が出る。</p>
+  </a>
+  <a class="card k" href="chinza.html">
+    <h3>饒速日鎮座録</h3>
+    <p>近代の郡誌・神社誌から抽出した饒速日命関係の神社 825 件。令制国別の分布図と
+       社格・祭神・典拠の各欄。</p>
+  </a>
+</div>
+
+<h2>集めた社伝</h2>
+<table>
+  <thead><tr><th>系統</th><th>件数</th><th>出所</th></tr></thead>
+  <tbody>
+    <tr><td>戦前の地誌・神社誌</td><td class="n">23,566</td><td>NDL 次世代デジタルライブラリー 1,723 冊</td></tr>
+    <tr><td>各県神社庁サイト</td><td class="n">3,560</td><td>14 県</td></tr>
+    <tr><td>Wikipedia</td><td class="n">1,425</td><td>CC BY-SA 4.0</td></tr>
+    <tr><td>現地の由緒板</td><td class="n">1</td><td>写真からの翻刻</td></tr>
+    <tr class="tot"><td>地図に載る社伝</td><td class="n">26,398</td><td></td></tr>
+  </tbody>
+</table>
+
+<p>これとは別に、社名リストに依らず地誌の本文から刈り取った
+<b>独立コーパス 117,444 件</b>がある。異なり社名 73,000 超で、現存社数を上回る。
+合祀で消えた社や郡誌にしか出てこない小社が含まれるため。
+年号が読めたもの 9 割、勧請元が読めたもの 5,000 件超。</p>
+
+<h2>確度について</h2>
+<div class="note">
+  地誌からの引き当ては二段に分けている。<br>
+  <b>A</b> — 社名に加え郡・町村・大字まで一致（6,221 件）<br>
+  <b>B</b> — 社名と項目見出しの位置のみ一致（17,386 件）。<b>同名の別社である可能性がある</b>
+</div>
+<p>B は地図上でも点線と「?」で区別し、断定していない。
+いずれも NDL の原本コマへのリンクを必ず添えてあるので、原文で確認できる。</p>
+
+<h2>道具</h2>
+<table>
+  <tbody>
+    <tr><td><code>fetch_vols.py</code></td><td>戦前の地誌を NDL から探して落とす</td></tr>
+    <tr><td><code>gazetteer.py</code></td><td>地誌から社名で引き当てる（確度 A / B）</td></tr>
+    <tr><td><code>harvest.py</code></td><td><b>勧請・遷座などの語</b>を鍵に社伝を刈り取る</td></tr>
+    <tr><td><code>scrape_shaden.py</code></td><td>各県神社庁サイトから由緒・社格を採る</td></tr>
+    <tr><td><code>wiki_shaden.py</code></td><td>Wikipedia の神社記事から由緒節を採る</td></tr>
+    <tr><td><code>boards.py</code></td><td>由緒板の写真を取り込み翻刻を溜める</td></tr>
+    <tr><td><code>build_tenbyo.py</code></td><td>地図ページを組み立てる</td></tr>
+  </tbody>
+</table>
+
+<h2>饒速日研究</h2>
+<p>もとの目的。673 単位・1,917 事績を構造化し、底本への逐語依存を測った。</p>
+<table>
+  <tbody>
+    <tr><td><a href="REPORT_structuring.md">構造化データ報告</a></td><td>673 単位の構造化と、社伝層／地誌層の性格の違い</td></tr>
+    <tr><td><a href="REPORT_dependency.md">依存推定報告</a></td><td>底本への逐語依存。対照群が一致率 0.00% を返すことを確認して測る</td></tr>
+    <tr><td><a href="REPORT_sokoku.md">惣国風土記追補</a></td><td>偽書の定型性を数量化。神社条 69 件の 100% が単一の枠</td></tr>
+  </tbody>
+</table>
+
+<h2>データと作法</h2>
+<p>この repository には<b>構造化した結果と書誌情報のみ</b>を置いている。
+NDL の OCR 本文や各サイトの由緒全文は含めていない（利用条件の確認が必要なため）。
+代わりに書誌・コマ番号・原本リンクを残した索引を置いた。手元で再現するには各道具を順に走らせる。</p>
+<p>取得にあたっては robots.txt を確認して全面拒否のサイトは対象から外し、
+User-Agent に用途と連絡先を明記し、要求間隔を 0.8〜1 秒とした。
+Google マップの自動巡回はしない（利用規約が禁じているため、由緒板は人が集めた URL を渡す半自動運用）。</p>
+
+<footer>
+  <a href="https://github.com/hacchake/shaden">github.com/hacchake/shaden</a>
+</footer>
+
+</div>
+</body>
+</html>
