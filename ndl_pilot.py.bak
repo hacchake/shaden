@@ -1,0 +1,100 @@
+"""
+NDL次世代デジタルライブラリー API パイロット
+  1) キーワードで本文検索 → ヒット資料(PID)と書誌を収集
+  2) 各PIDの全文JSONを取得
+  3) キーワードを含むコマだけ前後文脈つきで切り出し → JSONL
+使い方:
+  python ndl_pilot.py search 饒速日 磐船 十種神宝 --size 50
+  python ndl_pilot.py extract --terms 饒速日 磐船 --ctx 400
+"""
+import argparse, json, sys, time, re
+from pathlib import Path
+import requests
+
+BASE = "https://lab.ndl.go.jp/dl/api"
+OUT = Path("data"); OUT.mkdir(exist_ok=True)
+HITS = OUT / "hits.jsonl"
+FULL = OUT / "fulltext"; FULL.mkdir(exist_ok=True)
+UNITS = OUT / "units.jsonl"
+S = requests.Session(); S.headers["User-Agent"] = "shaden-pilot/0.1 (personal research)"
+
+def get(url, **kw):
+    for i in range(3):
+        r = S.get(url, timeout=60, **kw)
+        if r.ok: return r
+        time.sleep(2 * (i + 1))
+    r.raise_for_status()
+
+def search(keywords, size, classic):
+    seen = {l.split("\t")[0] for l in HITS.read_text().splitlines()} if HITS.exists() else set()
+    with HITS.open("a", encoding="utf-8") as f:
+        for kw in keywords:
+            frm = 0
+            while True:
+                p = {"keyword": kw, "searchfield": "contentonly", "size": size, "from": frm}
+                if classic is not None: p["fc-isClassic"] = str(classic).lower()
+                j = get(f"{BASE}/book/search", params=p).json()
+                # 返戻形式はSwaggerで要確認。list / hits の両方に対応させる
+                items = j.get("list") or j.get("hits") or j.get("result") or []
+                if not items: break
+                for it in items:
+                    pid = str(it.get("pid") or it.get("id") or "")
+                    key = f"{pid}\t{kw}"
+                    if not pid or key in seen: continue
+                    seen.add(key)
+                    f.write(json.dumps({"pid": pid, "keyword": kw,
+                        "title": it.get("title"), "author": it.get("author") or it.get("creator"),
+                        "pub": it.get("publisher"), "year": it.get("publicationDate") or it.get("year"),
+                        "ndc": it.get("ndc"), "snippets": it.get("highlight") or it.get("snippets"),
+                        "raw": it}, ensure_ascii=False) + "\n")
+                print(f"[{kw}] from={frm} got={len(items)}", file=sys.stderr)
+                frm += size
+                if len(items) < size: break
+                time.sleep(0.5)
+
+def fetch_fulltext(pid):
+    fp = FULL / f"{pid}.json"
+    if fp.exists(): return json.loads(fp.read_text(encoding="utf-8"))
+    j = get(f"{BASE}/book/fulltext-json/{pid}").json()
+    fp.write_text(json.dumps(j, ensure_ascii=False), encoding="utf-8")
+    time.sleep(0.5)
+    return j
+
+def pages_of(j):
+    """全文JSONから (コマ番号, テキスト) を列挙。形式差に緩く対応"""
+    pages = j.get("pages") or j.get("list") or j.get("contents") or []
+    if isinstance(pages, dict): pages = list(pages.values())
+    for i, p in enumerate(pages):
+        if isinstance(p, str): yield i + 1, p; continue
+        txt = p.get("contents") or p.get("text") or ""
+        if isinstance(txt, list): txt = "".join(txt)
+        yield p.get("page") or p.get("koma") or i + 1, txt
+
+def extract(terms, ctx):
+    pat = re.compile("|".join(map(re.escape, terms)))
+    pids = {json.loads(l)["pid"]: json.loads(l) for l in HITS.read_text(encoding="utf-8").splitlines()}
+    with UNITS.open("w", encoding="utf-8") as f:
+        for pid, meta in pids.items():
+            try: j = fetch_fulltext(pid)
+            except Exception as e:
+                print(f"skip {pid}: {e}", file=sys.stderr); continue
+            for koma, txt in pages_of(j):
+                txt = re.sub(r"\s+", "", txt)
+                for m in pat.finditer(txt):
+                    a, b = max(0, m.start() - ctx), min(len(txt), m.end() + ctx)
+                    f.write(json.dumps({"pid": pid, "koma": koma, "term": m.group(),
+                        "title": meta.get("title"), "year": meta.get("year"),
+                        "url": f"https://dl.ndl.go.jp/pid/{pid}/1/{koma}",
+                        "text": txt[a:b]}, ensure_ascii=False) + "\n")
+    print(f"→ {UNITS}", file=sys.stderr)
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("search"); s.add_argument("keywords", nargs="+")
+    s.add_argument("--size", type=int, default=50); s.add_argument("--classic", default=None)
+    e = sub.add_parser("extract"); e.add_argument("--terms", nargs="+", required=True)
+    e.add_argument("--ctx", type=int, default=400)
+    a = ap.parse_args()
+    if a.cmd == "search": search(a.keywords, a.size, a.classic)
+    else: extract(a.terms, a.ctx)

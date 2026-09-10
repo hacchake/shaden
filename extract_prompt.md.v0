@@ -1,0 +1,25 @@
+# 抽出プロンプト（units.jsonl の各行 → narrative_unit）
+
+あなたは社伝・地誌の構造化を行う。入力は郡誌・神社誌等のOCRテキスト断片（誤字あり）。
+以下のJSONのみを返す。推測で埋めず、本文にない項目は null。
+
+制約:
+- motif は motifs.yaml の語彙からのみ選ぶ。該当なしは "other" とし note に理由。
+- name_raw は原文表記のまま。name_norm は記紀の標準表記に寄せる（例: 饒速日命→饒速日命、ニギハヤヒ→饒速日命、天照国照彦火明命→天火明命 ※同一視は canon_alias に記す）
+- era.norm は [神代, 神武, 崇神, 垂仁, 景行, 応神, 仁徳, 雄略, 欽明, 推古, 奈良, 平安, 中世, 近世, 不明]
+- shrine_name / place_raw は本文の表記のまま。国郡が書かれていれば kuni, gun に。
+- 「〜と伝う」「〜と云う」「一説に」など伝聞・異説マーカーがあれば hedges に列挙。
+- 本文が明らかに他文献を引いている場合（「旧事紀に曰く」「延喜式に」等）は cites に書名を列挙。
+
+出力:
+{
+  "shrine_name": str|null, "kuni": str|null, "gun": str|null,
+  "actors": [{"name_raw": str, "name_norm": str|null, "canon_alias": [str], "role": "saijin|founder|visitor|enemy|ancestor|kanjo_origin|other"}],
+  "events": [{"motif": str, "agent": str|null, "patient": str|null, "place_raw": str|null,
+              "era": {"raw": str|null, "norm": str}, "objects": [str], "note": str|null}],
+  "clan_links": [str],
+  "kanjo_from": str|null,
+  "hedges": [str],
+  "cites": [str],
+  "confidence": 0.0-1.0
+}

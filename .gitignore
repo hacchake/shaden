@@ -1,0 +1,26 @@
+# NDL・各サイトから取得した生データは配布しない(容量とライセンスの両方の理由)
+data/fulltext/
+data/jinjashi/*.json
+!data/jinjashi/best.json
+!data/jinjashi/vols.json
+!data/jinjashi/gun2city.json
+!data/jinjashi/candidates.json
+!data/jinjashi/harvest_match.json
+data/jinjashi/harvest.jsonl
+data/jinjashi/match.jsonl
+data/jinjashi/index.json
+data/shrinemap/data.json
+data/shrinemap/raw/
+data/shaden_corpus.jsonl
+data/units.jsonl
+data/units_dedup.jsonl
+data/base/*.json
+data/shaden/
+logs/
+__pycache__/
+*.pyc
+data/jinjashi/best.json
+data/base/*.txt
+data/layer_all.jsonl
+data/hits.jsonl
+data/jinjashi/harvest_match.json
