@@ -42,6 +42,11 @@ a{color:var(--ai)}
 .card h3{font-family:var(--f-d);font-size:19px;margin:0 0 5px;letter-spacing:.05em}
 .card p{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
 .card.k{border-left-color:var(--kin)}
+.card.ex{border-left-color:var(--ai);border-style:dashed}
+.card.ex h3:after{content:"↗";font-family:var(--f-m);font-size:13px;margin-left:6px;
+  color:var(--ai);vertical-align:2px}
+.card .from{display:block;font-family:var(--f-m);font-size:10px;letter-spacing:.06em;
+  color:var(--faint);margin-top:7px}
 table{border-collapse:collapse;width:100%;font-size:13.5px;margin:0 0 16px}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-family:var(--f-m);font-size:10.5px;letter-spacing:.09em;color:var(--muted);
@@ -82,6 +87,16 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
     <h3>饒速日鎮座録</h3>
     <p>近代の郡誌・神社誌から抽出した饒速日命関係の神社 825 件。令制国別の分布図と
        社格・祭神・典拠の各欄。</p>
+  </a>
+</div>
+
+<h2>関連するもの</h2>
+<div class="cards">
+  <a class="card ex" href="https://hacchake.github.io/shrine-map/">
+    <h3>近くの神社まつり</h3>
+    <p>いま居る場所や地図で押した地点の近く、あるいは同じ時期に行われる祭りを探せる地図。
+       全国 70,393 社の例祭日を集めたもので、この社伝プロジェクトの座標と基本情報はここから来ている。</p>
+    <span class="from">hacchake/shrine-map</span>
   </a>
 </div>
 
