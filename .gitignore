@@ -10,6 +10,7 @@ data/jinjashi/harvest.jsonl
 data/jinjashi/match.jsonl
 data/jinjashi/index.json
 data/shrinemap/data.json
+!data/map.json
 data/shrinemap/raw/
 data/shaden_corpus.jsonl
 data/units.jsonl

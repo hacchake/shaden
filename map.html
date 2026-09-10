@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>社伝マップ — 地図に重ねて見る</title>
+<meta name="description" content="全国70,204社を地理院タイルに重ねて表示し、社伝・祭神・例祭を引ける地図。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --ground:#F7F6F2; --surface:#FFFFFF; --surface-2:#FBFAF7;
+  --ink:#16181C; --muted:#63697A; --faint:#949AA6; --line:#E1DFD8; --line-2:#C9C6BC;
+  --shu:#B23A2E; --shu-soft:#F4E5E2; --ai:#4C6076; --ai-soft:#E5E9ED;
+  --kin:#9A7B33; --kin-soft:#F3ECDA; --moss:#4C6B4F;
+  --f-d:"Zen Old Mincho",'Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-b:"Zen Kaku Gothic New",'Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --f-m:"Roboto Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#101216; --surface:#171A1F; --surface-2:#1C1F25;
+  --ink:#E9E7E1; --muted:#9AA1AE; --faint:#6B7280; --line:#282C33; --line-2:#3A3F48;
+  --shu:#E0685A; --shu-soft:#2E1D1A; --ai:#7C93AC; --ai-soft:#1B222A;
+  --kin:#C9A455; --kin-soft:#2A2314; --moss:#8FB093;
+}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* 上帯 */
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;
+  background:var(--surface);border-bottom:1px solid var(--line-2);z-index:1000}
+.ttl{font-family:var(--f-d);font-weight:700;font-size:17px;letter-spacing:.08em;
+  margin-right:6px;white-space:nowrap}
+.ttl a{color:inherit;text-decoration:none}
+.bar input[type=search],.bar select{font:inherit;font-size:12.5px;padding:5px 8px;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--surface-2);color:var(--ink)}
+.bar input[type=search]{flex:1 1 170px;min-width:120px}
+.bar select{font-family:var(--f-m);font-size:11.5px;max-width:140px}
+.tg{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-m);font-size:11px;
+  color:var(--muted);cursor:pointer;padding:4px 8px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2);white-space:nowrap}
+.tg input{accent-color:var(--shu);margin:0}
+.tg:has(input:checked){border-color:var(--shu);color:var(--shu);background:var(--shu-soft)}
+.tg.k:has(input:checked){border-color:var(--kin);color:var(--kin);background:var(--kin-soft)}
+.cnt{margin-left:auto;font-family:var(--f-m);font-size:11.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.cnt b{color:var(--ink);font-weight:500}
+
+/* 地図 */
+.body{flex:1;position:relative;min-height:0}
+#map{position:absolute;inset:0}
+#pts{position:absolute;inset:0;pointer-events:none;z-index:450}
+.leaflet-container{background:var(--surface-2);font-family:var(--f-b)}
+.lgd{position:absolute;right:10px;bottom:22px;z-index:600;background:var(--surface);
+  border:1px solid var(--line);border-radius:2px;padding:7px 10px;font-family:var(--f-m);
+  font-size:10.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.lgd span{display:flex;align-items:center;gap:6px}
+.lgd i{width:8px;height:8px;border-radius:50%;display:block}
+.hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;
+  background:var(--ink);color:var(--ground);font-size:12px;padding:5px 12px;border-radius:2px;
+  opacity:.92;pointer-events:none;transition:opacity .3s}
+.hint.off{opacity:0}
+
+/* 詳細 */
+.panel{position:absolute;right:0;top:0;bottom:0;width:min(400px,92vw);z-index:700;
+  background:var(--surface);border-left:1px solid var(--line-2);overflow-y:auto;
+  transform:translateX(101%);transition:transform .22s ease;padding:16px 18px 40px}
+.panel.on{transform:none}
+.panel h2{font-family:var(--f-d);font-size:21px;margin:0 0 3px;letter-spacing:.04em}
+.panel .sub{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+.cls{position:absolute;right:10px;top:10px;font-family:var(--f-m);font-size:11px;
+  background:none;border:1px solid var(--line-2);border-radius:2px;color:var(--muted);
+  cursor:pointer;padding:3px 8px}
+.cls:hover{border-color:var(--shu);color:var(--shu)}
+.fld{margin:0 0 12px}
+.fld dt{font-family:var(--f-m);font-size:9.5px;letter-spacing:.09em;color:var(--faint);margin:0 0 3px}
+.fld dd{margin:0;font-size:13px;line-height:1.75}
+.txt{max-height:260px;overflow-y:auto;font-size:12.5px;line-height:1.85;white-space:pre-wrap;
+  padding:9px 11px;background:var(--surface-2);border-left:2px solid var(--shu);border-radius:2px}
+.txt.g{border-left-color:var(--kin)} .txt.w{border-left-color:var(--ai)}
+.txt.b{border-left-color:var(--moss)}
+.rk{display:inline-block;font-family:var(--f-m);font-size:10px;padding:1px 6px;border-radius:2px;
+  background:var(--shu-soft);color:var(--shu);border-left:2px solid var(--shu)}
+.rk.sk{background:var(--ai-soft);color:var(--ai);border-left-color:var(--ai);margin-left:4px}
+.kw{display:inline-block;font-family:var(--f-m);font-size:9.5px;padding:1px 5px;margin:0 3px 3px 0;
+  border-radius:2px;background:var(--kin-soft);color:var(--kin);border:1px solid var(--kin)}
+.lk{color:var(--ai);font-family:var(--f-m);font-size:11.5px;text-decoration:none;
+  border-bottom:1px solid currentColor}
+.lk:hover{color:var(--shu)}
+.meta{font-family:var(--f-m);font-size:10px;color:var(--faint);margin-top:4px}
+.nigi{color:var(--shu);font-weight:500}
+.dash{color:var(--faint);font-family:var(--f-m);font-size:11px}
+
+/* 検索結果 */
+.res{position:absolute;left:12px;top:12px;z-index:650;background:var(--surface);
+  border:1px solid var(--line-2);border-radius:2px;max-height:46vh;overflow-y:auto;
+  width:min(300px,80vw);display:none}
+.res.on{display:block}
+.res button{display:block;width:100%;text-align:left;background:none;border:0;
+  border-bottom:1px solid var(--line);padding:8px 11px;cursor:pointer;font:inherit;color:inherit}
+.res button:hover{background:var(--surface-2)}
+.res .n{font-family:var(--f-d);font-size:13.5px}
+.res .a{font-size:11px;color:var(--muted)}
+.load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  z-index:900;background:var(--ground);font-family:var(--f-m);font-size:13px;color:var(--muted);
+  flex-direction:column;gap:10px}
+.spin{width:26px;height:26px;border:2px solid var(--line-2);border-top-color:var(--shu);
+  border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}.panel{transition:none}}
+@media (max-width:640px){.ttl{font-size:15px}.bar{padding:6px 8px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <div class="ttl"><a href="./">社伝マップ</a></div>
+    <input type="search" id="q" placeholder="社名・住所・祭神で検索" aria-label="検索">
+    <select id="pref" aria-label="都道府県"><option value="">全国</option></select>
+    <select id="sd" aria-label="社伝の出所"><option value="">社伝すべて</option>
+      <option value="any">社伝ありのみ</option>
+      <option value="j">神社庁</option><option value="g">戦前地誌</option>
+      <option value="ga">戦前地誌（確度高）</option>
+      <option value="w">Wikipedia</option><option value="b">由緒板</option></select>
+    <label class="tg"><input type="checkbox" id="fd">祭神あり</label>
+    <label class="tg k"><input type="checkbox" id="fr">饒速日関係</label>
+    <span class="cnt" id="cnt">読み込み中…</span>
+  </div>
+  <div class="body">
+    <div id="map"></div>
+    <canvas id="pts"></canvas>
+    <div class="hint" id="hint">点をクリックすると社伝が出ます</div>
+    <div class="lgd">
+      <span><i style="background:#B23A2E"></i>神社</span>
+      <span><i style="background:#4C6076"></i>寺院</span>
+      <span><i style="background:#9A7B33"></i>饒速日関係</span>
+    </div>
+    <div class="res" id="res"></div>
+    <div class="panel" id="panel"></div>
+    <div class="load" id="load"><div class="spin"></div><div id="loadtxt">データを読み込んでいます</div></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+"use strict";
+var NAME=0,PREF=1,LAT=2,LNG=3,ADDR=4,DEITY=5,MONS=6,FDATE=7,SRC=8,TEMPLE=9,URL=10;
+var D=null,R=[],P=[],S=[],VOLS=[],JJ={},GZ={},WK={},BD={},OV={};
+var vis=null,visN=0,sel=-1;
+var F={q:"",pref:-1,sd:"",d:false,r:false};
+
+var map=L.map('map',{preferCanvas:true,zoomControl:true,minZoom:4,maxZoom:18})
+  .setView([36.2,138.2],5);
+var gsi=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
+  attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>',
+  maxZoom:18}).addTo(map);
+var pale=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{
+  attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>',maxZoom:18});
+var photo=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{
+  attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>',maxZoom:18});
+var osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',maxZoom:19});
+L.control.layers({"地理院 標準":gsi,"地理院 淡色":pale,"航空写真":photo,"OpenStreetMap":osm},null,
+  {position:'topright'}).addTo(map);
+L.control.scale({imperial:false}).addTo(map);
+
+var cv=document.getElementById('pts'),ctx=cv.getContext('2d'),DPR=1;
+function size(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  var b=map.getSize();
+  cv.width=b.x*DPR; cv.height=b.y*DPR;
+  cv.style.width=b.x+'px'; cv.style.height=b.y+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+function draw(){
+  if(!R.length) return;
+  var b=map.getSize(); ctx.clearRect(0,0,b.x,b.y);
+  var z=map.getZoom(), rad=z<7?1.1:(z<10?1.8:(z<13?2.8:4));
+  var bnds=map.getBounds(), s=bnds.getSouth(),n=bnds.getNorth(),w=bnds.getWest(),e=bnds.getEast();
+  var pad=(n-s)*0.05;
+  function pass(i){
+    if(!vis[i])return false;
+    var la=R[i][LAT],ln=R[i][LNG];
+    return la>=s-pad&&la<=n+pad&&ln>=w-pad&&ln<=e+pad;
+  }
+  ctx.globalAlpha=z<8?0.66:0.88;
+  ctx.fillStyle='#B23A2E';
+  for(var i=0;i<R.length;i++){
+    if(!pass(i)||R[i][TEMPLE]||OV[i])continue;
+    var p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+    ctx.fillRect(p.x-rad,p.y-rad,rad*2,rad*2);
+  }
+  ctx.fillStyle='#4C6076';
+  for(i=0;i<R.length;i++){
+    if(!pass(i)||!R[i][TEMPLE]||OV[i])continue;
+    var p2=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+    ctx.fillRect(p2.x-rad,p2.y-rad,rad*2,rad*2);
+  }
+  ctx.globalAlpha=1; ctx.fillStyle='#9A7B33';
+  for(i=0;i<R.length;i++){
+    if(!pass(i)||!OV[i])continue;
+    var p3=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+    ctx.beginPath(); ctx.arc(p3.x,p3.y,Math.max(3,rad+1.6),0,6.2832); ctx.fill();
+  }
+  if(sel>=0&&vis[sel]){
+    var ps=map.latLngToContainerPoint([R[sel][LAT],R[sel][LNG]]);
+    ctx.strokeStyle='#B23A2E'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(ps.x,ps.y,9,0,6.2832); ctx.stroke();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(ps.x,ps.y,11,0,6.2832); ctx.stroke();
+  }
+}
+map.on('move zoom viewreset',draw);
+map.on('resize',function(){size();draw();});
+
+function pick(e){
+  var m=e.containerPoint,best=-1,bd=400;
+  var bnds=map.getBounds();
+  for(var i=0;i<R.length;i++){
+    if(!vis[i])continue;
+    var la=R[i][LAT],ln=R[i][LNG];
+    if(la<bnds.getSouth()||la>bnds.getNorth()||ln<bnds.getWest()||ln>bnds.getEast())continue;
+    var p=map.latLngToContainerPoint([la,ln]);
+    var dx=p.x-m.x,dy=p.y-m.y,d2=dx*dx+dy*dy;
+    if(d2<bd){bd=d2;best=i;}
+  }
+  return best;
+}
+map.on('click',function(e){ var i=pick(e); if(i>=0) show(i); });
+
+function monTxt(m){return (m&&m.length)?m.map(function(x){return x+"月";}).join("・"):"";}
+
+function show(i){
+  sel=i; draw();
+  var r=R[i],j=JJ[i],g=GZ[i],w=WK[i],b=BD[i],o=OV[i];
+  var f=[];
+  var rank=(j&&j.sk)||(g&&g.r)||(o&&o.rank)||"";
+  if(rank||(j&&j.ik)||(o&&o.sk))
+    f.push(["社格",(rank?'<span class="rk">'+esc(rank)+'</span>':'')+
+      ((j&&j.ik)||(o&&o.sk)?'<span class="rk sk">式内</span>':'')]);
+  f.push(["所在地",esc(P[r[PREF]])+" "+esc(r[ADDR]||"")]);
+  f.push(["祭神",r[DEITY]?esc(r[DEITY]).replace(/(饒速日|櫛玉|天火明)/g,'<span class="nigi">$1</span>')
+                        :'<span class="dash">記載なし</span>']);
+  f.push(["例祭",(r[FDATE]||monTxt(r[MONS]))?esc(r[FDATE]||monTxt(r[MONS])):'<span class="dash">記載なし</span>']);
+  if(b) f.push(["社伝 ／ 現地の由緒板",'<div class="txt b">'+esc(b.t)+'</div>'+
+    (b.at?'<div class="meta">翻刻 '+esc(b.at)+'</div>':'')]);
+  if(j&&j.sd) f.push(["社伝 ／ 神社庁（現在）",'<div class="txt">'+esc(j.sd)+'</div>']);
+  if(g){
+    var gu="https://dl.ndl.go.jp/pid/"+g.p+"/1/"+g.k;
+    f.push(["社伝 ／ 戦前の地誌"+(g.c==="A"?"":"（参考）"),
+      '<div class="txt g"><b>'+esc(VOLS[g.v]||"")+'</b> 第'+g.k+'コマ'+
+      (g.kj?'<br>勧請元 <b>'+esc(g.kj)+'</b>':'')+
+      (g.e&&g.e.length?'<br>年号 '+esc(g.e.join("・")):'')+
+      (g.kw&&g.kw.length?'<br>'+g.kw.map(function(x){return '<span class="kw">'+esc(x)+'</span>';}).join(''):'')+
+      '</div><div class="meta">'+
+      (g.c==="A"?"郡・町村・大字まで一致。確度は高い。":"社名のみ一致。<b>同名の別社の可能性がある</b>。")+
+      ' <a class="lk" href="'+gu+'" target="_blank" rel="noopener">NDL の原本 ↗</a></div>']);
+  }
+  if(w) f.push(["社伝 ／ Wikipedia",'<div class="txt w">'+esc(w.t)+'</div>'+
+    '<div class="meta">CC BY-SA 4.0 ／ <a class="lk" href="https://ja.wikipedia.org/wiki/'+
+    encodeURIComponent(w.n)+'" target="_blank" rel="noopener">'+esc(w.n)+' ↗</a></div>']);
+  if(j&&j.memo) f.push(["メモ",'<div class="txt">'+esc(j.memo)+'</div>']);
+  if(o) f.push(["饒速日研究",'対応ユニット #'+o.u.join(" #")+
+    (o.note?'<div class="txt g" style="margin-top:6px">'+esc(o.note)+'</div>':'')]);
+  f.push(["出典",esc(S[r[SRC]])+(r[URL]?' <a class="lk" href="'+esc(r[URL])+
+    '" target="_blank" rel="noopener">元頁 ↗</a>':'')]);
+  f.push(["座標",'<span style="font-family:var(--f-m);font-size:12px">'+
+    r[LAT].toFixed(5)+", "+r[LNG].toFixed(5)+'</span>']);
+  var el=document.getElementById('panel');
+  el.innerHTML='<button class="cls" id="cls" type="button">閉じる ✕</button>'+
+    '<h2>'+esc(r[NAME])+'</h2><p class="sub">'+esc(P[r[PREF]])+
+    (r[TEMPLE]?' ／ 寺院':' ／ 神社')+((j&&j.yomi)?' ／ '+esc(j.yomi):'')+'</p>'+
+    f.map(function(x){return '<dl class="fld"><dt>'+x[0]+'</dt><dd>'+x[1]+'</dd></dl>';}).join('');
+  el.classList.add('on');
+  document.getElementById('cls').onclick=function(){el.classList.remove('on');sel=-1;draw();};
+  document.getElementById('hint').classList.add('off');
+}
+
+function apply(){
+  var q=F.q.toLowerCase(),n=0;
+  for(var i=0;i<R.length;i++){
+    var r=R[i],ok=1;
+    if(F.pref>=0&&r[PREF]!==F.pref)ok=0;
+    else if(F.d&&!r[DEITY])ok=0;
+    else if(F.r&&!OV[i])ok=0;
+    else if(F.sd==="any"&&!(JJ[i]&&JJ[i].sd||GZ[i]||WK[i]||BD[i]))ok=0;
+    else if(F.sd==="j"&&!(JJ[i]&&JJ[i].sd))ok=0;
+    else if(F.sd==="g"&&!GZ[i])ok=0;
+    else if(F.sd==="ga"&&!(GZ[i]&&GZ[i].c==="A"))ok=0;
+    else if(F.sd==="w"&&!WK[i])ok=0;
+    else if(F.sd==="b"&&!BD[i])ok=0;
+    else if(q){
+      var j=JJ[i],w=WK[i],b=BD[i];
+      var hay=r[NAME]+r[ADDR]+r[DEITY]+(j?(j.sd||"")+(j.memo||""):"")+(w?w.t:"")+(b?b.t:"");
+      if(hay.toLowerCase().indexOf(q)<0)ok=0;
+    }
+    vis[i]=ok; n+=ok;
+  }
+  visN=n;
+  document.getElementById('cnt').innerHTML='<b>'+n.toLocaleString()+'</b> / '+R.length.toLocaleString()+' 社';
+  draw(); results();
+}
+function results(){
+  var el=document.getElementById('res');
+  if(!F.q||visN===0||visN>400){el.classList.remove('on');el.innerHTML='';return;}
+  var h='',c=0;
+  for(var i=0;i<R.length&&c<60;i++){
+    if(!vis[i])continue;
+    h+='<button type="button" data-i="'+i+'"><span class="n">'+esc(R[i][NAME])+
+       '</span><br><span class="a">'+esc(P[R[i][PREF]])+' '+esc(R[i][ADDR]||'')+'</span></button>';
+    c++;
+  }
+  el.innerHTML=h+(visN>c?'<div style="padding:7px 11px;font-size:11px;color:var(--faint);font-family:var(--f-m)">ほか '+(visN-c)+' 件</div>':'');
+  el.classList.add('on');
+}
+document.getElementById('res').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-i]'); if(!b)return;
+  var i=+b.dataset.i;
+  map.setView([R[i][LAT],R[i][LNG]],16);
+  show(i);
+});
+
+fetch('data/map.json').then(function(r){
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  document.getElementById('loadtxt').textContent='読み込み中… 展開しています';
+  return r.json();
+}).then(function(d){
+  D=d; R=d.r; P=d.p; S=d.s; VOLS=d.vols||[];
+  JJ=d.jj||{}; GZ=d.gz||{}; WK=d.wk||{}; BD=d.bd||{}; OV=d.ov||{};
+  vis=new Uint8Array(R.length).fill(1); visN=R.length;
+  var pe=document.getElementById('pref'),c={};
+  for(var i=0;i<R.length;i++)c[R[i][PREF]]=(c[R[i][PREF]]||0)+1;
+  P.map(function(n,ix){return [n,ix,c[ix]||0];}).sort(function(a,b){return b[2]-a[2];})
+   .forEach(function(x){var o=document.createElement('option');o.value=x[1];
+     o.textContent=x[0]+' ('+x[2]+')';pe.appendChild(o);});
+  document.getElementById('load').remove();
+  size(); apply();
+  setTimeout(function(){document.getElementById('hint').classList.add('off');},6000);
+}).catch(function(e){
+  document.getElementById('load').innerHTML=
+    '<div style="text-align:center;line-height:1.9">データを読み込めませんでした<br>'+
+    '<span style="font-size:11px">'+esc(e.message)+'</span><br>'+
+    '<a class="lk" href="./">トップへ戻る</a></div>';
+});
+
+document.getElementById('q').oninput=function(e){F.q=e.target.value;apply();};
+document.getElementById('pref').onchange=function(e){
+  F.pref=e.target.value===''?-1:+e.target.value;
+  if(F.pref>=0){
+    var la=0,ln=0,n=0;
+    for(var i=0;i<R.length;i++) if(R[i][PREF]===F.pref){la+=R[i][LAT];ln+=R[i][LNG];n++;}
+    if(n) map.setView([la/n,ln/n],9);
+  }
+  apply();
+};
+document.getElementById('sd').onchange=function(e){F.sd=e.target.value;apply();};
+document.getElementById('fd').onchange=function(e){F.d=e.target.checked;apply();};
+document.getElementById('fr').onchange=function(e){F.r=e.target.checked;apply();};
+window.addEventListener('resize',function(){size();draw();});
+})();
+</script>
+</body>
+</html>
