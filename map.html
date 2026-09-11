@@ -45,6 +45,38 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);
 .tg input{accent-color:var(--shu);margin:0}
 .tg:has(input:checked){border-color:var(--shu);color:var(--shu);background:var(--shu-soft)}
 .tg.k:has(input:checked){border-color:var(--kin);color:var(--kin);background:var(--kin-soft)}
+.qbtn{font-family:var(--f-m);font-size:11px;padding:4px 9px;cursor:pointer;border-radius:2px;
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.qbtn:hover{border-color:var(--shu);color:var(--shu)}
+.qbtn.on{border-color:var(--shu);color:#fff;background:var(--shu)}
+.qpanel{position:absolute;left:54px;top:12px;z-index:680;width:min(330px,88vw);
+  background:var(--surface);border:1px solid var(--line-2);border-radius:3px;
+  padding:12px 13px 13px;display:none;box-shadow:0 4px 18px rgba(0,0,0,.13)}
+.qpanel.on{display:block}
+.qpanel h3{font-family:var(--f-d);font-size:15px;margin:0 0 3px;letter-spacing:.05em}
+.qpanel .lead{font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+.qrow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sw{width:17px;height:17px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.22);cursor:pointer}
+.qrow input[type=text]{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:5px 7px;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--surface-2);color:var(--ink)}
+.qn{font-family:var(--f-m);font-size:10.5px;color:var(--muted);min-width:52px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.qdel{border:0;background:none;color:var(--faint);cursor:pointer;font-size:14px;padding:0 2px;line-height:1}
+.qdel:hover{color:var(--shu)}
+.qopt{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.qopt label{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-m);font-size:10.5px;
+  color:var(--muted);cursor:pointer}
+.qopt input{accent-color:var(--shu);margin:0}
+.qopt select{font-family:var(--f-m);font-size:10.5px;padding:3px 5px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2);color:var(--ink)}
+.qadd{font-family:var(--f-m);font-size:11px;color:var(--ai);background:none;border:0;
+  cursor:pointer;padding:3px 0;margin-top:2px}
+.qadd:hover{color:var(--shu)}
+.qov{margin-top:8px;font-family:var(--f-m);font-size:10.5px;color:var(--muted);line-height:1.8}
+.qov b{color:var(--ink)}
+.qclose{position:absolute;right:8px;top:8px;border:0;background:none;color:var(--faint);
+  cursor:pointer;font-family:var(--f-m);font-size:11px}
+.qclose:hover{color:var(--shu)}
 .cnt{margin-left:auto;font-family:var(--f-m);font-size:11.5px;color:var(--muted);
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .cnt b{color:var(--ink);font-weight:500}
@@ -95,10 +127,11 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);
 .dash{color:var(--faint);font-family:var(--f-m);font-size:11px}
 
 /* 検索結果 */
-.res{position:absolute;left:12px;top:12px;z-index:650;background:var(--surface);
+.res{position:absolute;left:54px;top:12px;z-index:650;background:var(--surface);
   border:1px solid var(--line-2);border-radius:2px;max-height:46vh;overflow-y:auto;
   width:min(300px,80vw);display:none}
 .res.on{display:block}
+.qpanel.on ~ .res{top:auto;bottom:26px;max-height:34vh}
 .res button{display:block;width:100%;text-align:left;background:none;border:0;
   border-bottom:1px solid var(--line);padding:8px 11px;cursor:pointer;font:inherit;color:inherit}
 .res button:hover{background:var(--surface-2)}
@@ -127,16 +160,34 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);
       <option value="w">Wikipedia</option><option value="b">由緒板</option></select>
     <label class="tg"><input type="checkbox" id="fd">祭神あり</label>
     <label class="tg k"><input type="checkbox" id="fr">饒速日関係</label>
+    <button class="qbtn" id="qtoggle" type="button">くらべる</button>
     <span class="cnt" id="cnt">読み込み中…</span>
   </div>
   <div class="body">
     <div id="map"></div>
     <canvas id="pts"></canvas>
     <div class="hint" id="hint">点をクリックすると社伝が出ます</div>
-    <div class="lgd">
+    <div class="lgd" id="lgd">
       <span><i style="background:#B23A2E"></i>神社</span>
       <span><i style="background:#4C6076"></i>寺院</span>
       <span><i style="background:#9A7B33"></i>饒速日関係</span>
+    </div>
+    <div class="qpanel" id="qpanel">
+      <button class="qclose" id="qclose" type="button">✕</button>
+      <h3>くらべる</h3>
+      <p class="lead">複数の語を色分けして重ねる。両方に当たる社は円を分割して両方の色で描く。</p>
+      <div id="qrows"></div>
+      <button class="qadd" id="qadd" type="button">＋ 語を追加</button>
+      <div class="qopt">
+        <select id="qscope" aria-label="検索対象">
+          <option value="deity">祭神から探す</option>
+          <option value="all">すべてから探す</option>
+        </select>
+        <label><input type="checkbox" id="qsyn" checked>表記ゆれを展開</label>
+        <label><input type="checkbox" id="qonly">当たった社だけ</label>
+        <label><input type="checkbox" id="qboth">重なりだけ</label>
+      </div>
+      <div class="qov" id="qov"></div>
     </div>
     <div class="res" id="res"></div>
     <div class="panel" id="panel"></div>
@@ -152,6 +203,39 @@ var NAME=0,PREF=1,LAT=2,LNG=3,ADDR=4,DEITY=5,MONS=6,FDATE=7,SRC=8,TEMPLE=9,URL=1
 var D=null,R=[],P=[],S=[],VOLS=[],JJ={},GZ={},WK={},BD={},OV={};
 var vis=null,visN=0,sel=-1;
 var F={q:"",pref:-1,sd:"",d:false,r:false};
+
+/* くらべる(複数語の色分け)
+   祭神の表記は一つに定まらない。素朴に「素戔嗚」で引くと103社しか出ないが、
+   素盞嗚・須佐之男・牛頭天王…まで含めると972社ある。9倍の取りこぼし。
+   そこで語ごとに異名の束を持ち、既定で展開してから当てる。 */
+var SYN=[
+ ["素戔嗚","素盞嗚","素盞鳴","素戔鳴","須佐之男","須佐男","須左之男","建速須佐","速須佐","牛頭天王","武塔"],
+ ["大国主","大國主","大己貴","大穴牟遅","大穴持","大汝","八千矛","葦原醜男","顕国玉","宇都志国玉","大物主","三輪明神"],
+ ["天照","天照大神","天照大御神","大日孁","大日靈","皇大神","天照皇"],
+ ["応神","應神","誉田別","譽田別","品陀和気","八幡大神","八幡神"],
+ ["稲荷","稻荷","宇迦之御魂","宇迦能御魂","倉稲魂","倉稻魂","保食","御饌津"],
+ ["菅原道真","菅原","天満大自在天神","天満天神","天神"],
+ ["饒速日","櫛玉","櫛甕","天火明","天照国照","天照國照","宇摩志麻治","可美真手","物部"],
+ ["木花","木花開耶","木花之佐久夜","浅間大神","淺間大神","許乃花"],
+ ["伊弉諾","伊邪那岐","伊弉冉","伊邪那美"],
+ ["日本武","倭建","倭武"],
+ ["猿田彦","猨田彦","佐田彦","庚申"],
+ ["少彦名","少名毘古那"],
+ ["住吉","底筒男","中筒男","表筒男"],
+ ["市杵島","市寸島","狭依毘売","弁財天","辨財天","厳島","嚴島"],
+ ["建御名方","武御名方","健御名方","諏訪"],
+ ["経津主","經津主","武甕槌","建御雷","香取","鹿島","鹿嶋"],
+ ["白山","菊理媛","白山比咩","白山比売"],
+ ["熊野","家都御子","速玉","夫須美"],
+ ["金山彦","金山毘古","金屋子"],
+ ["大山祇","大山積","大山津見","和多志"]
+];
+var QC=["#D9342B","#2563C9","#1F8A5B","#8E44AD","#E08A00"];
+var QN=["朱","藍","緑","紫","橙"];
+var QS=[{t:""},{t:""}];
+var QF={scope:"deity",syn:true,only:false,both:false};
+var qmask=null,qcnt=[0,0,0,0,0],qov=0,qact=[];
+var HAY=null;
 
 var map=L.map('map',{preferCanvas:true,zoomControl:true,minZoom:4,maxZoom:18})
   .setView([36.2,138.2],5);
@@ -179,6 +263,58 @@ function size(){
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 
+/* 語 → 実際に当てる文字列の束 */
+function expand(t){
+  t=t.trim(); if(!t) return null;
+  var out=[t];
+  if(QF.syn) for(var i=0;i<SYN.length;i++){
+    var g=SYN[i],hit=false;
+    for(var j=0;j<g.length;j++) if(g[j].indexOf(t)>=0||t.indexOf(g[j])>=0){hit=true;break;}
+    if(hit) for(j=0;j<g.length;j++) if(out.indexOf(g[j])<0) out.push(g[j]);
+  }
+  return out;
+}
+function buildHay(){
+  if(HAY) return;
+  HAY=new Array(R.length);
+  for(var i=0;i<R.length;i++){
+    var r=R[i],j=JJ[i],w=WK[i],b=BD[i],g=GZ[i];
+    HAY[i]=r[NAME]+r[ADDR]+r[DEITY]+(j?(j.sd||"")+(j.memo||""):"")+
+           (w?w.t:"")+(b?b.t:"")+(g?(g.kj||"")+(g.kw?g.kw.join(""):""):"");
+  }
+}
+function activeQueries(){
+  qact=[];
+  for(var i=0;i<QS.length&&i<5;i++){
+    var e=expand(QS[i].t);
+    if(e) qact.push({bit:1<<i,i:i,terms:e});
+  }
+  if(qact.length&&QF.scope==="all") buildHay();
+  return qact;
+}
+function hayOf(i){return QF.scope==="all"?HAY[i]:(R[i][DEITY]||"");}
+function bitsOf(m){var a=[];for(var k=0;k<5;k++)if(m&(1<<k))a.push(k);return a;}
+
+function pieDot(x,y,r,bs){
+  if(bs.length===1){
+    ctx.fillStyle=QC[bs[0]];
+    ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.fill();
+  }else{
+    /* 複数に当たった社は円を等分し、当たった色すべてで塗る */
+    var a=-Math.PI/2,st=6.2831853/bs.length;
+    for(var t=0;t<bs.length;t++){
+      ctx.fillStyle=QC[bs[t]];
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.arc(x,y,r,a,a+st); ctx.closePath(); ctx.fill();
+      a+=st;
+    }
+  }
+  if(r>=3){
+    ctx.strokeStyle=bs.length>1?"rgba(255,255,255,.95)":"rgba(255,255,255,.6)";
+    ctx.lineWidth=bs.length>1?1.3:0.8;
+    ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.stroke();
+  }
+}
+
 function draw(){
   if(!R.length) return;
   var b=map.getSize(); ctx.clearRect(0,0,b.x,b.y);
@@ -190,24 +326,42 @@ function draw(){
     var la=R[i][LAT],ln=R[i][LNG];
     return la>=s-pad&&la<=n+pad&&ln>=w-pad&&ln<=e+pad;
   }
-  ctx.globalAlpha=z<8?0.66:0.88;
-  ctx.fillStyle='#B23A2E';
-  for(var i=0;i<R.length;i++){
-    if(!pass(i)||R[i][TEMPLE]||OV[i])continue;
-    var p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+  var i,p,hasQ=qact.length>0;
+
+  /* 当たらなかった社は地の点として薄く敷く */
+  ctx.globalAlpha=hasQ?0.30:(z<8?0.66:0.88);
+  ctx.fillStyle=hasQ?'#98958C':'#B23A2E';
+  for(i=0;i<R.length;i++){
+    if(!pass(i)||R[i][TEMPLE]||OV[i]||(hasQ&&qmask[i]))continue;
+    p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
     ctx.fillRect(p.x-rad,p.y-rad,rad*2,rad*2);
   }
-  ctx.fillStyle='#4C6076';
+  ctx.fillStyle=hasQ?'#A9A69C':'#4C6076';
   for(i=0;i<R.length;i++){
-    if(!pass(i)||!R[i][TEMPLE]||OV[i])continue;
-    var p2=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
-    ctx.fillRect(p2.x-rad,p2.y-rad,rad*2,rad*2);
+    if(!pass(i)||!R[i][TEMPLE]||OV[i]||(hasQ&&qmask[i]))continue;
+    p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+    ctx.fillRect(p.x-rad,p.y-rad,rad*2,rad*2);
   }
-  ctx.globalAlpha=1; ctx.fillStyle='#9A7B33';
-  for(i=0;i<R.length;i++){
-    if(!pass(i)||!OV[i])continue;
-    var p3=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
-    ctx.beginPath(); ctx.arc(p3.x,p3.y,Math.max(3,rad+1.6),0,6.2832); ctx.fill();
+  ctx.globalAlpha=1;
+  if(!hasQ){
+    ctx.fillStyle='#9A7B33';
+    for(i=0;i<R.length;i++){
+      if(!pass(i)||!OV[i])continue;
+      p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+      ctx.beginPath(); ctx.arc(p.x,p.y,Math.max(3,rad+1.6),0,6.2832); ctx.fill();
+    }
+  }else{
+    /* 当たった社。単独は一色、重なりは円を分けて両方の色で。
+       重なりは半径を上げて必ず見えるようにする(それが見たいものなので) */
+    var one=Math.max(2.2,rad+0.9), many=Math.max(4.2,rad+2.4), later=[];
+    for(i=0;i<R.length;i++){
+      if(!pass(i)||!qmask[i])continue;
+      var bs=bitsOf(qmask[i]);
+      p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+      if(bs.length>1){later.push([p.x,p.y,bs]);continue;}
+      pieDot(p.x,p.y,one,bs);
+    }
+    for(i=0;i<later.length;i++) pieDot(later[i][0],later[i][1],many,later[i][2]);
   }
   if(sel>=0&&vis[sel]){
     var ps=map.latLngToContainerPoint([R[sel][LAT],R[sel][LNG]]);
@@ -285,6 +439,9 @@ function show(i){
 
 function apply(){
   var q=F.q.toLowerCase(),n=0;
+  activeQueries();
+  if(!qmask||qmask.length!==R.length) qmask=new Uint8Array(R.length);
+  qcnt=[0,0,0,0,0]; qov=0;
   for(var i=0;i<R.length;i++){
     var r=R[i],ok=1;
     if(F.pref>=0&&r[PREF]!==F.pref)ok=0;
@@ -301,15 +458,31 @@ function apply(){
       var hay=r[NAME]+r[ADDR]+r[DEITY]+(j?(j.sd||"")+(j.memo||""):"")+(w?w.t:"")+(b?b.t:"");
       if(hay.toLowerCase().indexOf(q)<0)ok=0;
     }
+    var m=0;
+    if(ok&&qact.length){
+      var hay=hayOf(i);
+      for(var t=0;t<qact.length;t++){
+        var tm=qact[t].terms;
+        for(var u=0;u<tm.length;u++) if(hay.indexOf(tm[u])>=0){m|=qact[t].bit;break;}
+      }
+      if(m){
+        var nb=0;
+        for(var k=0;k<5;k++) if(m&(1<<k)){qcnt[k]++;nb++;}
+        if(nb>1) qov++;
+      }
+      if(QF.only&&!m) ok=0;
+      if(QF.both&&!(m&&(m&(m-1)))) ok=0;
+    }
+    qmask[i]=m;
     vis[i]=ok; n+=ok;
   }
   visN=n;
   document.getElementById('cnt').innerHTML='<b>'+n.toLocaleString()+'</b> / '+R.length.toLocaleString()+' 社';
-  draw(); results();
+  qstat(); draw(); results();
 }
 function results(){
   var el=document.getElementById('res');
-  if(!F.q||visN===0||visN>400){el.classList.remove('on');el.innerHTML='';return;}
+  if((!F.q&&!QF.only&&!QF.both)||visN===0||visN>400){el.classList.remove('on');el.innerHTML='';return;}
   var h='',c=0;
   for(var i=0;i<R.length&&c<60;i++){
     if(!vis[i])continue;
@@ -363,6 +536,83 @@ document.getElementById('pref').onchange=function(e){
 document.getElementById('sd').onchange=function(e){F.sd=e.target.value;apply();};
 document.getElementById('fd').onchange=function(e){F.d=e.target.checked;apply();};
 document.getElementById('fr').onchange=function(e){F.r=e.target.checked;apply();};
+
+/* くらべる の UI */
+var QROWS=document.getElementById('qrows');
+function qrender(){
+  var h='';
+  for(var i=0;i<QS.length;i++){
+    h+='<div class="qrow"><span class="sw" style="background:'+QC[i]+'" title="'+QN[i]+'"></span>'+
+       '<input type="text" data-i="'+i+'" value="'+esc(QS[i].t)+'" placeholder="'+
+       (i===0?'例 大国主':(i===1?'例 素戔嗚':'語を入れる'))+'">'+
+       '<span class="qn" data-n="'+i+'"></span>'+
+       (QS.length>1?'<button class="qdel" data-d="'+i+'" type="button" title="この行を消す">&#10005;</button>':'')+
+       '</div>';
+  }
+  QROWS.innerHTML=h;
+  document.getElementById('qadd').style.display=QS.length>=5?'none':'';
+  qstat();
+}
+function qstat(){
+  var ns=QROWS.querySelectorAll('.qn');
+  for(var i=0;i<ns.length;i++){
+    var k=+ns[i].getAttribute('data-n');
+    var on=qact.some(function(a){return a.i===k;});
+    ns[i].textContent=on?qcnt[k].toLocaleString():'';
+    ns[i].style.color=on?QC[k]:'';
+  }
+  var el=document.getElementById('qov');
+  if(!qact.length){el.innerHTML='';}
+  else{
+    var names=qact.map(function(a){
+      return '<b style="color:'+QC[a.i]+'">'+esc(QS[a.i].t.trim())+'</b> '+qcnt[a.i].toLocaleString()+' 社';
+    }).join('　');
+    var ex=0;
+    qact.forEach(function(a){if(a.terms.length>ex)ex=a.terms.length;});
+    el.innerHTML=names+
+      (qact.length>1?'<br>うち重なり <b>'+qov.toLocaleString()+'</b> 社':'')+
+      (QF.syn&&ex>1?'<br><span style="color:var(--faint)">異名を展開して当てている</span>':'');
+  }
+  document.getElementById('qtoggle').classList.toggle('on',qact.length>0);
+  var lg=document.getElementById('lgd');
+  if(!qact.length){
+    lg.innerHTML='<span><i style="background:#B23A2E"></i>神社</span>'+
+      '<span><i style="background:#4C6076"></i>寺院</span>'+
+      '<span><i style="background:#9A7B33"></i>饒速日関係</span>';
+  }else{
+    lg.innerHTML=qact.map(function(a){
+        return '<span><i style="background:'+QC[a.i]+'"></i>'+esc(QS[a.i].t.trim())+'</span>';
+      }).join('')+
+      (qact.length>1?'<span><i style="background:linear-gradient(90deg,'+
+        QC[qact[0].i]+' 50%,'+QC[qact[1].i]+' 50%);border:1px solid #fff"></i>両方</span>':'')+
+      '<span><i style="background:#98958C"></i>当たらず</span>';
+  }
+}
+QROWS.addEventListener('input',function(e){
+  var t=e.target; if(!t.hasAttribute('data-i'))return;
+  QS[+t.getAttribute('data-i')].t=t.value; apply();
+});
+QROWS.addEventListener('click',function(e){
+  var b=e.target.closest('button[data-d]'); if(!b)return;
+  QS.splice(+b.getAttribute('data-d'),1); if(!QS.length)QS=[{t:""}];
+  qrender(); apply();
+});
+document.getElementById('qadd').onclick=function(){
+  if(QS.length<5){QS.push({t:""});qrender();}
+};
+document.getElementById('qscope').onchange=function(e){QF.scope=e.target.value;apply();};
+document.getElementById('qsyn').onchange=function(e){QF.syn=e.target.checked;apply();};
+document.getElementById('qonly').onchange=function(e){QF.only=e.target.checked;apply();};
+document.getElementById('qboth').onchange=function(e){QF.both=e.target.checked;apply();};
+document.getElementById('qtoggle').onclick=function(){
+  var el=document.getElementById('qpanel');
+  el.classList.toggle('on');
+  if(el.classList.contains('on')){var f=QROWS.querySelector('input');if(f)f.focus();}
+};
+document.getElementById('qclose').onclick=function(){
+  document.getElementById('qpanel').classList.remove('on');
+};
+qrender();
 window.addEventListener('resize',function(){size();draw();});
 })();
 </script>
