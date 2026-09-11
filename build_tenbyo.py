@@ -6,9 +6,7 @@
 import json, io, os, re, glob, collections
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-TPL = ("C:/Users/sisho/AppData/Local/Temp/claude/"
-       "C--Users-sisho-Desktop-shaden/a9cd5319-f19f-4920-93d4-cd08c7344d00/"
-       "scratchpad/tenbyo.tpl.html")
+TPL = os.path.join(BASE, "tenbyo.tpl.html")
 OUT = os.path.join(BASE, "tenbyo.html")
 
 SHAKAKU_ORD = ["別格官幣社", "官幣大社", "官幣中社", "官幣小社",
@@ -88,6 +86,8 @@ def main():
             if sc.get("yomi"):
                 e["yomi"] = clean(sc["yomi"], 30)
             if e:
+                if e.get("sd"):
+                    e["u"] = sc.get("source_url", "")   # 表から神社庁の元頁へ飛ぶため
                 JJ[str(ni)] = e
 
     OV = {str(remap[int(k)]): v for k, v in ov.items() if int(k) in remap}
@@ -133,7 +133,7 @@ def main():
                                "p": int(mm.group(1)) if mm else 0,
                                "k": int(mm.group(2)) if mm else 0,
                                "r": v.get("r", ""), "c": v.get("c", "B")}
-                if v.get("k"): GZ[str(ni)]["k"] = v["k"][:5]
+                if v.get("k"): GZ[str(ni)]["kw"] = v["k"][:5]   # "k" はコマ番号。語は kw に分ける
                 if v.get("e"): GZ[str(ni)]["e"] = v["e"][:3]
                 if v.get("kj"): GZ[str(ni)]["kj"] = v["kj"][:20]
     wm = os.path.join(BASE, "data/wiki/wiki_match.json")

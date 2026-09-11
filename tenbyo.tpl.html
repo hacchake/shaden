@@ -1,0 +1,619 @@
+<meta charset="utf-8">
+<title>社伝点描図</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F7F6F2; --surface:#FFFFFF; --surface-2:#FBFAF7; --sunken:#EFEDE6;
+  --ink:#16181C; --muted:#63697A; --faint:#949AA6; --line:#E1DFD8; --line-2:#C9C6BC;
+  --shu:#B23A2E; --shu-soft:#F4E5E2;
+  --ai:#4C6076; --ai-soft:#E5E9ED;
+  --kin:#9A7B33; --kin-soft:#F3ECDA;
+  --map-bg:#EFEDE6;
+  --f-d:"Zen Old Mincho",'Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-b:"Zen Kaku Gothic New",'Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --f-m:"Roboto Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#101216; --surface:#171A1F; --surface-2:#1C1F25; --sunken:#0A0C0F;
+  --ink:#E9E7E1; --muted:#9AA1AE; --faint:#6B7280; --line:#282C33; --line-2:#3A3F48;
+  --shu:#E0685A; --shu-soft:#2E1D1A;
+  --ai:#7C93AC; --ai-soft:#1B222A;
+  --kin:#C9A455; --kin-soft:#2A2314;
+  --map-bg:#0A0C0F;
+}}
+:root[data-theme="dark"]{
+  --ground:#101216; --surface:#171A1F; --surface-2:#1C1F25; --sunken:#0A0C0F;
+  --ink:#E9E7E1; --muted:#9AA1AE; --faint:#6B7280; --line:#282C33; --line-2:#3A3F48;
+  --shu:#E0685A; --shu-soft:#2E1D1A;
+  --ai:#7C93AC; --ai-soft:#1B222A;
+  --kin:#C9A455; --kin-soft:#2A2314;
+  --map-bg:#0A0C0F;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--f-b);line-height:1.7;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:30px 18px 70px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 26px;
+  border-bottom:2px solid var(--ink);padding-bottom:16px}
+.brand{flex:1 1 300px;min-width:0}
+.eyebrow{font-family:var(--f-m);font-size:10.5px;letter-spacing:.18em;color:var(--muted);
+  margin:0 0 5px;text-transform:uppercase}
+h1{font-family:var(--f-d);font-weight:700;font-size:clamp(28px,4.6vw,40px);letter-spacing:.1em;
+  margin:0 0 6px;text-wrap:balance}
+.lede{margin:0;color:var(--muted);font-size:13.5px;max-width:60ch}
+.hstats{display:flex;gap:0;border:1px solid var(--line);border-radius:2px;overflow:hidden;
+  background:var(--surface)}
+.hstat{padding:8px 15px;border-right:1px solid var(--line)}
+.hstat:last-child{border-right:0}
+.hstat dt{font-family:var(--f-m);font-size:9.5px;letter-spacing:.1em;color:var(--muted);margin:0}
+.hstat dd{margin:0;font-family:var(--f-m);font-size:19px;font-weight:500;
+  font-variant-numeric:tabular-nums;color:var(--shu)}
+
+/* 地図 */
+.mapwrap{position:relative;margin-top:20px;border:1px solid var(--line-2);border-radius:2px;
+  background:var(--map-bg);overflow:hidden}
+#cv{display:block;width:100%;height:min(56vh,520px);cursor:crosshair;touch-action:none}
+.mapui{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:5px}
+.zbtn{width:28px;height:28px;font-family:var(--f-m);font-size:15px;line-height:1;
+  border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer;
+  border-radius:2px;padding:0}
+.zbtn:hover{border-color:var(--shu);color:var(--shu)}
+.maplegend{position:absolute;right:10px;top:10px;background:var(--surface);
+  border:1px solid var(--line);border-radius:2px;padding:7px 10px;font-family:var(--f-m);
+  font-size:10.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.maplegend span{display:flex;align-items:center;gap:6px}
+.maplegend i{width:7px;height:7px;border-radius:50%;display:block}
+.maphint{position:absolute;left:10px;bottom:9px;font-family:var(--f-m);font-size:10px;
+  color:var(--faint);background:var(--surface);padding:3px 7px;border-radius:2px;
+  border:1px solid var(--line)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--ground);
+  font-size:11.5px;padding:4px 8px;border-radius:2px;white-space:nowrap;opacity:0;
+  transition:opacity .1s;z-index:5}
+
+/* 絞り込み */
+.bar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:14px;padding:11px;
+  background:var(--surface);border:1px solid var(--line);border-radius:2px}
+.bar input[type=search],.bar select{font:inherit;font-size:12.5px;padding:6px 9px;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--surface-2);color:var(--ink)}
+.bar input[type=search]{flex:1 1 190px;min-width:0}
+.bar select{font-family:var(--f-m);font-size:11.5px;max-width:150px}
+.tg{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-m);font-size:11px;
+  color:var(--muted);cursor:pointer;padding:5px 9px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2)}
+.tg input{accent-color:var(--shu);margin:0}
+.tg:has(input:checked){border-color:var(--shu);color:var(--shu);background:var(--shu-soft)}
+.tg.k:has(input:checked){border-color:var(--kin);color:var(--kin);background:var(--kin-soft)}
+.rst{font-family:var(--f-m);font-size:11px;padding:5px 9px;cursor:pointer;border-radius:2px;
+  border:1px solid var(--line-2);background:transparent;color:var(--muted)}
+.rst:hover{border-color:var(--shu);color:var(--shu)}
+.cnt{margin-left:auto;font-family:var(--f-m);font-size:12px;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.cnt b{color:var(--ink);font-weight:500}
+
+/* 選択カード */
+.card{margin-top:12px;border:1px solid var(--shu);border-left:4px solid var(--shu);
+  border-radius:2px;background:var(--surface);padding:14px 16px}
+.card h3{font-family:var(--f-d);font-size:19px;margin:0 0 3px;font-weight:700}
+.card .sub{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.card dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:9px 20px;margin:0}
+.card dt{font-family:var(--f-m);font-size:9.5px;letter-spacing:.09em;color:var(--faint);margin:0}
+.card dd{margin:0;font-size:12.5px;line-height:1.6}
+.card .wide{grid-column:1/-1}
+.close{float:right;font-family:var(--f-m);font-size:11px;background:none;border:0;
+  color:var(--muted);cursor:pointer;padding:2px 4px}
+.close:hover{color:var(--shu)}
+
+/* 表 */
+.tbox{margin-top:12px;border:1px solid var(--line);border-radius:2px;background:var(--surface);
+  overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1140px;font-size:12.5px}
+thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);font-family:var(--f-m);
+  font-size:10px;letter-spacing:.09em;font-weight:500;color:var(--muted);text-align:left;
+  padding:8px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--line);cursor:pointer}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.hit{background:var(--kin-soft)}
+td{padding:8px 10px;vertical-align:top}
+.n{font-family:var(--f-d);font-size:13.5px;font-weight:500;line-height:1.35}
+.n .t{font-family:var(--f-m);font-size:9px;color:var(--ai);margin-left:4px}
+.ad{color:var(--muted);font-size:11.5px;line-height:1.45;max-width:22ch}
+.ad b{color:var(--ink);font-weight:500;font-family:var(--f-m);font-size:10.5px}
+.de{font-size:11.5px;line-height:1.45;max-width:24ch;color:var(--ink)}
+.de em{color:var(--shu);font-style:normal;font-weight:500}
+.fe{font-family:var(--f-m);font-size:11px;color:var(--muted);max-width:16ch;line-height:1.45}
+.mo{display:inline-block;background:var(--ai-soft);color:var(--ai);border-radius:2px;
+  padding:0 4px;margin-right:3px;font-size:10px}
+.rs{font-size:11.5px;line-height:1.45;max-width:26ch;color:var(--kin)}
+.sr{font-family:var(--f-m);font-size:10px;color:var(--faint);max-width:14ch;line-height:1.4}
+.dash{color:var(--faint);font-family:var(--f-m);font-size:10.5px}
+.rk{display:inline-block;font-family:var(--f-m);font-size:10px;padding:1px 5px;border-radius:2px;
+  background:var(--shu-soft);color:var(--shu);border-left:2px solid var(--shu);white-space:nowrap}
+.rk.sk{background:var(--ai-soft);color:var(--ai);border-left-color:var(--ai);margin-left:3px}
+.n .ym{display:block;font-family:var(--f-m);font-size:9px;color:var(--faint);margin-top:1px}
+.sdt{font-size:11.5px;line-height:1.5;color:var(--ink)}
+.sdt.kn{color:var(--kin)}
+.rs{font-size:11.5px;line-height:1.5;max-width:34ch;color:var(--ink)}
+.mm-c{max-width:18ch}
+.mm{font-size:11px;line-height:1.45;color:var(--muted)}
+.sdfull{max-height:210px;overflow-y:auto;font-size:12.5px;line-height:1.75;
+  white-space:pre-wrap;padding:8px 10px;background:var(--surface-2);
+  border-left:2px solid var(--shu);border-radius:2px}
+.sdfull.kn{border-left-color:var(--kin)}
+.sdfull.bd{border-left-color:var(--moss);max-height:300px}
+.sdt.bd{color:var(--ink)}
+.bdg{display:inline-block;font-family:var(--f-m);font-size:9px;padding:1px 4px;margin-right:5px;
+  background:var(--moss);color:var(--ground);border-radius:2px;vertical-align:1px;white-space:nowrap}
+.bdg.j{background:var(--shu)}
+.bdg.g{background:var(--kin)}
+.bdg.g.b2{background:transparent;color:var(--kin);border:1px solid var(--kin)}
+.gzbox.b2{border-left-style:dashed}
+.kws{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px}
+.kw{font-family:var(--f-m);font-size:9.5px;padding:1px 5px;border-radius:2px;
+  background:var(--kin-soft);color:var(--kin);border:1px solid var(--kin)}
+.bdg.w{background:var(--ai)}
+.sdt.gz{color:var(--muted)}
+.sls{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.sl{font-family:var(--f-m);font-size:9.5px;line-height:1.6;padding:0 6px;border:1px solid currentColor;
+  border-radius:2px;text-decoration:none;color:var(--ai);white-space:nowrap}
+.sl.g{color:var(--kin)} .sl.j{color:var(--shu)}
+.sl:hover{background:var(--surface-2)}
+.sl:focus-visible{outline:2px solid var(--shu);outline-offset:1px}
+.sdfull.gz{border-left-color:var(--kin)}
+.sdfull.wk{border-left-color:var(--ai)}
+.gzbox{font-size:12.5px;line-height:1.7;padding:8px 10px;background:var(--surface-2);
+  border-left:2px solid var(--kin);border-radius:2px}
+.bmeta{font-family:var(--f-m);font-size:10px;color:var(--faint);margin-top:4px}
+.tg.b:has(input:checked){border-color:var(--moss);color:var(--moss);background:transparent}
+tbody tr.brd{box-shadow:inset 3px 0 0 var(--moss)}
+.more{display:block;width:100%;padding:11px;background:var(--surface-2);border:0;
+  border-top:1px solid var(--line);font-family:var(--f-m);font-size:11.5px;color:var(--ai);
+  cursor:pointer}
+.more:hover{color:var(--shu)}
+.link{color:var(--ai);font-family:var(--f-m);font-size:11px;text-decoration:none;
+  border-bottom:1px solid currentColor}
+.link:hover{color:var(--shu)}
+footer{margin-top:38px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;
+  color:var(--muted);line-height:1.8}
+footer code{font-family:var(--f-m);font-size:11px;color:var(--ink)}
+footer a{color:var(--ai)}
+:focus-visible{outline:2px solid var(--shu);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){.wrap{padding:20px 12px 50px}.ad,.de,.fe,.rs,.sr{max-width:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="brand">
+    <p class="eyebrow">70,393 shrines — 全国神社庁 / OSM / ホトカミ</p>
+    <h1>社伝点描図</h1>
+    <p class="lede">全国 70,393 社の座標をそのまま点で打った図。地図画像は使わず、社の分布だけで国土の輪郭が現れる。
+      点を押すと祭神・例祭に加え、各県神社庁が伝える<b>社伝（由緒）</b>が出る。</p>
+  </div>
+  <dl class="hstats" id="hs"></dl>
+</header>
+
+<div class="mapwrap">
+  <canvas id="cv"></canvas>
+  <div class="mapui">
+    <button class="zbtn" id="zin" type="button" aria-label="拡大">＋</button>
+    <button class="zbtn" id="zout" type="button" aria-label="縮小">−</button>
+    <button class="zbtn" id="zrst" type="button" aria-label="全体表示" style="font-size:11px">全</button>
+  </div>
+  <div class="maplegend">
+    <span><i style="background:var(--shu)"></i>神社</span>
+    <span><i style="background:var(--ai)"></i>寺院</span>
+    <span><i style="background:var(--kin)"></i>饒速日関係</span>
+    <span><i style="background:var(--moss);outline:2px solid var(--moss);outline-offset:1px"></i>由緒板の翻刻</span>
+  </div>
+  <div class="maphint">ドラッグで移動 / ホイールで拡大</div>
+  <div class="tip" id="tip"></div>
+</div>
+
+<div class="bar">
+  <input type="search" id="q" placeholder="社名・住所・祭神で検索" aria-label="検索">
+  <select id="pref" aria-label="都道府県"><option value="">全国</option></select>
+  <select id="src" aria-label="出典"><option value="">出典すべて</option></select>
+  <select id="mon" aria-label="例祭月"><option value="">例祭月すべて</option></select>
+  <select id="rank" aria-label="社格"><option value="">社格すべて</option></select>
+  <label class="tg"><input type="checkbox" id="fs">社伝あり</label>
+  <label class="tg b"><input type="checkbox" id="fb">由緒板あり</label>
+  <select id="sdsrc" aria-label="社伝の出所"><option value="">社伝の出所すべて</option>
+    <option value="j">神社庁サイト</option><option value="g">戦前の神社誌</option>
+    <option value="w">Wikipedia</option><option value="b">由緒板</option>
+    <option value="ga">戦前神社誌（確度高のみ）</option></select>
+  <label class="tg"><input type="checkbox" id="fd">祭神あり</label>
+  <label class="tg"><input type="checkbox" id="ff">例祭あり</label>
+  <label class="tg k"><input type="checkbox" id="fr">饒速日関係のみ</label>
+  <button class="rst" id="rst" type="button">解除</button>
+  <span class="cnt" id="cnt"></span>
+</div>
+
+<div id="cardbox"></div>
+
+<div class="tbox">
+  <table>
+    <thead><tr>
+      <th>社名</th><th>所在地</th><th>社格</th><th>祭神</th><th>社伝（由緒）</th>
+      <th>例祭</th><th>メモ</th><th>出典</th>
+    </tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
+  <button class="more" id="more" type="button" hidden></button>
+</div>
+
+<footer>
+  座標と基本情報 = <code>hacchake/shrine-map</code> の <code>data.json</code>
+  （各県神社庁サイト・OpenStreetMap・ホトカミ）。座標のある 70,204 社を描画。
+  <b>社伝・社格・メモ</b>は各県神社庁の詳細ページから <code>scrape_shaden.py</code> で新規に採取したもので、
+  対象県は順次拡大中（robots.txt が全面拒否の神奈川県は除外）。
+  <span style="color:var(--kin)">金茶</span>の行は、本サイトの饒速日研究データ 825 件と社名・旧国で
+  照合できた社。そこには近代地誌の側の社伝も併記する。照合は同名社を含む推定で、確定同定ではない。
+</footer>
+</div>
+
+<script id="D" type="application/json">__DATA__</script>
+<script id="O" type="application/json">__OVER__</script>
+<script id="J" type="application/json">__JINJA__</script>
+<script id="B" type="application/json">__BOARDS__</script>
+<script id="G" type="application/json">__GAZ__</script>
+<script id="W" type="application/json">__WIKI__</script>
+<script id="V" type="application/json">__VOLS__</script>
+<script>
+(function(){
+"use strict";
+var D=JSON.parse(document.getElementById("D").textContent);
+var OV=JSON.parse(document.getElementById("O").textContent);
+var JJ=JSON.parse(document.getElementById("J").textContent);
+var BD=JSON.parse(document.getElementById("B").textContent);
+var GZ=JSON.parse(document.getElementById("G").textContent);
+var WK=JSON.parse(document.getElementById("W").textContent);
+var VL=JSON.parse(document.getElementById("V").textContent);
+var P=D.p, S=D.s, R=D.r, N=R.length;
+/* 列: 0名 1県ix 2lat 3lng 4住所 5祭神 6月配列 7例祭日 8出典ix 9寺=1 10url */
+var NAME=0,PREF=1,LAT=2,LNG=3,ADDR=4,DEITY=5,MONS=6,FDATE=7,SRC=8,TEMPLE=9,URL=10;
+
+/* ── 投影(Web Mercator) ── */
+var X=new Float64Array(N), Y=new Float64Array(N);
+var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+for(var i=0;i<N;i++){
+  var la=R[i][LAT], ln=R[i][LNG];
+  var x=(ln+180)/360;
+  var s=Math.sin(la*Math.PI/180);
+  var y=0.5-Math.log((1+s)/(1-s))/(4*Math.PI);
+  X[i]=x; Y[i]=y;
+  if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+}
+var pad=0.02*(maxX-minX);
+minX-=pad;maxX+=pad;minY-=pad*0.6;maxY+=pad*0.6;
+
+var cv=document.getElementById("cv"), ctx=cv.getContext("2d"), DPR=1;
+var view={k:1,tx:0,ty:0}, base={k:1,ox:0,oy:0}, W=0,H=0;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  var kx=W/(maxX-minX), ky=H/(maxY-minY);
+  base.k=Math.min(kx,ky);
+  base.ox=(W-(maxX-minX)*base.k)/2; base.oy=(H-(maxY-minY)*base.k)/2;
+  draw();
+}
+function sx(i){return ((X[i]-minX)*base.k+base.ox)*view.k+view.tx;}
+function sy(i){return ((Y[i]-minY)*base.k+base.oy)*view.k+view.ty;}
+
+/* ── 絞り込み ── */
+var vis=new Uint8Array(N).fill(1), visN=N, sel=-1;
+var F={q:"",pref:-1,src:-1,mon:0,rank:"",ss:"",d:false,f:false,r:false,sd:false,bd:false};
+function applyFilter(){
+  var q=F.q.toLowerCase(), n=0;
+  for(var i=0;i<N;i++){
+    var r=R[i], ok=1;
+    if(F.pref>=0 && r[PREF]!==F.pref) ok=0;
+    else if(F.src>=0 && r[SRC]!==F.src) ok=0;
+    else if(F.d && !r[DEITY]) ok=0;
+    else if(F.f && !(r[MONS]&&r[MONS].length)) ok=0;
+    else if(F.r && !OV[i]) ok=0;
+    else if(F.sd && !(JJ[i]&&JJ[i].sd)) ok=0;
+    else if(F.bd && !BD[i]) ok=0;
+    else if(F.ss==="j" && !(JJ[i]&&JJ[i].sd)) ok=0;
+    else if(F.ss==="g" && !GZ[i]) ok=0;
+    else if(F.ss==="ga" && !(GZ[i]&&GZ[i].c==="A")) ok=0;
+    else if(F.ss==="w" && !WK[i]) ok=0;
+    else if(F.ss==="b" && !BD[i]) ok=0;
+    else if(F.rank && !(JJ[i]&&JJ[i].sk===F.rank) && !(OV[i]&&OV[i].rank===F.rank)) ok=0;
+    else if(F.mon && !(r[MONS]&&r[MONS].indexOf(F.mon)>=0)) ok=0;
+    else if(q){
+      var j=JJ[i], b=BD[i], g=GZ[i], w=WK[i];
+      var hay=r[NAME]+r[ADDR]+r[DEITY]+(j?(j.sd||"")+(j.memo||"")+(j.sk||""):"")+
+              (b?b.t:"")+(w?w.t:"");
+      if(hay.toLowerCase().indexOf(q)<0) ok=0;
+    }
+    vis[i]=ok; n+=ok;
+  }
+  visN=n;
+  document.getElementById("cnt").innerHTML="<b>"+n.toLocaleString()+"</b> / "+N.toLocaleString()+" 社";
+  shown=0; renderTable(true); draw();
+}
+
+/* ── 描画 ── */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  var css=getComputedStyle(document.documentElement);
+  var cShu=css.getPropertyValue("--shu").trim()||"#B23A2E";
+  var cAi=css.getPropertyValue("--ai").trim()||"#4C6076";
+  var cKin=css.getPropertyValue("--kin").trim()||"#9A7B33";
+  var r=view.k<2?0.9:(view.k<6?1.4:2.2);
+  var d=r*2;
+  ctx.globalAlpha=view.k<2?0.62:0.85;
+  /* 非強調(神社/寺)を先に、饒速日関係は最後に上へ */
+  ctx.fillStyle=cShu;
+  for(var i=0;i<N;i++){ if(!vis[i]||R[i][TEMPLE]||OV[i])continue;
+    var x=sx(i); if(x<-4||x>W+4)continue; var y=sy(i); if(y<-4||y>H+4)continue;
+    ctx.fillRect(x-r,y-r,d,d); }
+  ctx.fillStyle=cAi;
+  for(i=0;i<N;i++){ if(!vis[i]||!R[i][TEMPLE]||OV[i])continue;
+    var x2=sx(i); if(x2<-4||x2>W+4)continue; var y2=sy(i); if(y2<-4||y2>H+4)continue;
+    ctx.fillRect(x2-r,y2-r,d,d); }
+  ctx.globalAlpha=1; ctx.fillStyle=cKin;
+  for(i=0;i<N;i++){ if(!vis[i]||!OV[i])continue;
+    var x3=sx(i); if(x3<-6||x3>W+6)continue; var y3=sy(i); if(y3<-6||y3>H+6)continue;
+    ctx.beginPath(); ctx.arc(x3,y3,Math.max(2.4,r+1.4),0,6.2832); ctx.fill(); }
+  if(sel>=0 && vis[sel]){
+    var xs=sx(sel), ys=sy(sel);
+    ctx.strokeStyle=cShu; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(xs,ys,7,0,6.2832); ctx.stroke();
+  }
+}
+/* ── 当たり判定 ── */
+function pick(mx,my){
+  var best=-1,bd=225;
+  for(var i=0;i<N;i++){ if(!vis[i])continue;
+    var dx=sx(i)-mx; if(dx<-15||dx>15)continue;
+    var dy=sy(i)-my; if(dy<-15||dy>15)continue;
+    var d2=dx*dx+dy*dy; if(d2<bd){bd=d2;best=i;} }
+  return best;
+}
+/* ── 操作 ── */
+var drag=null;
+cv.addEventListener("pointerdown",function(e){
+  drag={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty,moved:false};
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener("pointermove",function(e){
+  var rect=cv.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  if(drag){
+    var dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(Math.abs(dx)+Math.abs(dy)>3) drag.moved=true;
+    view.tx=drag.tx+dx; view.ty=drag.ty+dy; draw(); return;
+  }
+  var i=pick(mx,my), tip=document.getElementById("tip");
+  if(i>=0){
+    tip.textContent=R[i][NAME]+"（"+P[R[i][PREF]]+"）";
+    tip.style.left=(mx+12)+"px"; tip.style.top=(my+12)+"px"; tip.style.opacity=1;
+  } else tip.style.opacity=0;
+});
+cv.addEventListener("pointerup",function(e){
+  var wasDrag=drag&&drag.moved; drag=null;
+  if(wasDrag)return;
+  var rect=cv.getBoundingClientRect();
+  var i=pick(e.clientX-rect.left,e.clientY-rect.top);
+  select(i);
+});
+cv.addEventListener("pointerleave",function(){document.getElementById("tip").style.opacity=0;});
+cv.addEventListener("wheel",function(e){
+  e.preventDefault();
+  var rect=cv.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  var f=e.deltaY<0?1.25:0.8, nk=Math.max(1,Math.min(140,view.k*f));
+  f=nk/view.k;
+  view.tx=mx-(mx-view.tx)*f; view.ty=my-(my-view.ty)*f; view.k=nk; draw();
+},{passive:false});
+function zoomAt(f){
+  var nk=Math.max(1,Math.min(140,view.k*f)); f=nk/view.k;
+  view.tx=W/2-(W/2-view.tx)*f; view.ty=H/2-(H/2-view.ty)*f; view.k=nk; draw();
+}
+document.getElementById("zin").onclick=function(){zoomAt(1.5);};
+document.getElementById("zout").onclick=function(){zoomAt(1/1.5);};
+document.getElementById("zrst").onclick=function(){view={k:1,tx:0,ty:0};draw();};
+
+/* ── 選択カード ── */
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function monTxt(m){return (m&&m.length)?m.map(function(x){return x+"月";}).join("・"):"";}
+function select(i){
+  sel=i; var box=document.getElementById("cardbox");
+  if(i<0){box.innerHTML="";draw();return;}
+  var r=R[i], o=OV[i];
+  var f=[];
+  f.push(["所在地",esc(r[ADDR]||"—")]);
+  f.push(["祭神",r[DEITY]?esc(r[DEITY]):'<span class="dash">記載なし</span>']);
+  f.push(["例祭",(r[FDATE]||monTxt(r[MONS]))?esc(r[FDATE]||monTxt(r[MONS])):'<span class="dash">記載なし</span>']);
+  f.push(["座標",'<span style="font-family:var(--f-m);font-size:11.5px">'+r[LAT].toFixed(5)+", "+r[LNG].toFixed(5)+'</span>']);
+  f.push(["出典",esc(S[r[SRC]])+(r[URL]?' <a class="link" href="'+esc(r[URL])+'" target="_blank" rel="noopener">元頁 ↗</a>':"")]);
+  var b=BD[i]||null;
+  if(b){
+    f.push(["社伝（現地の由緒板を翻刻）",
+      '<div class="sdfull bd">'+esc(b.t)+'</div>'+
+      (b.at?'<div class="bmeta">翻刻 '+esc(b.at)+' ／ 出典: Google マップ利用者投稿写真</div>':""),1]);
+  }
+  var j=JJ[i]||null, g=GZ[i]||null, w=WK[i]||null;
+  if(j){
+    if(j.sk||j.ik) f.push(["社格",esc(j.sk||"")+(j.ik?(j.sk?"・":"")+"式内":"")]);
+    if(j.sd) f.push(["社伝 ／ 神社庁サイト（現在）",'<div class="sdfull">'+esc(j.sd)+'</div>',1]);
+    if(j.memo) f.push(["メモ",'<div class="sdfull">'+esc(j.memo)+'</div>',1]);
+  }
+  if(g){
+    var gu="https://dl.ndl.go.jp/pid/"+g.p+"/1/"+g.k;
+    f.push(["社伝 ／ 戦前の郡誌・神社誌"+(g.c==="A"?"":"（参考）"),
+      '<div class="gzbox'+(g.c==="B"?" b2":"")+'"><b>'+esc(VL[g.v]||"")+'</b> 第'+g.k+'コマ'+
+      (g.r?' ／ 社格 <b>'+esc(g.r)+'</b>':'')+
+      (g.kw&&g.kw.length?'<div class="kws">'+g.kw.map(function(x){
+        return '<span class="kw">'+esc(x)+'</span>';}).join("")+'</div>':'')+
+      (g.e&&g.e.length?'<div class="bmeta">年号 '+esc(g.e.join("・"))+'</div>':'')+
+      (g.kj?'<div class="bmeta">勧請元 <b>'+esc(g.kj)+'</b></div>':'')+
+      '<div class="bmeta">'+
+      (g.c==="A"
+        ? "社名に加えて郡・町村・大字まで一致した。確度は高い。"
+        : "社名と項目見出しの位置だけが一致した。<b>同名の別社である可能性がある</b>。")+
+      ' 本文は <a class="ndl" href="'+gu+'" target="_blank" rel="noopener">NDL の原本 ↗</a>'+
+      ' で確認できる（全文は shaden_corpus.jsonl に収録）。</div></div>',1]);
+  }
+  if(w){
+    f.push(["社伝 ／ Wikipedia",'<div class="sdfull wk">'+esc(w.t)+'</div>'+
+      '<div class="bmeta">CC BY-SA 4.0 ／ '+
+      '<a class="ndl" href="https://ja.wikipedia.org/wiki/'+encodeURIComponent(w.n)+'" target="_blank" rel="noopener">'+esc(w.n)+' ↗</a></div>',1]);
+  }
+  if(o){
+    if(o.rank&&!(j&&j.sk)) f.push(["社格（近代地誌）",esc(o.rank)+(o.sk?"・式内":"")]);
+    if(o.note) f.push(["社伝（近代地誌）",'<div class="sdfull kn">'+esc(o.note)+'</div>',1]);
+    if(o.den) f.push(["社殿・沿革（近代地誌）",esc(o.den),1]);
+    f.push(["対応ユニット",'<span style="font-family:var(--f-m);font-size:11px">#'+o.u.join(" #")+'</span>']);
+  }
+  box.innerHTML='<div class="card"><button class="close" id="cl" type="button">閉じる ✕</button>'+
+    '<h3>'+esc(r[NAME])+'</h3><p class="sub">'+esc(P[r[PREF]])+
+    (r[TEMPLE]?' ／ 寺院':' ／ 神社')+(o?' ／ <span style="color:var(--kin)">饒速日関係</span>':'')+'</p>'+
+    '<dl>'+f.map(function(x){return '<div'+(x[2]?' class="wide"':'')+'><dt>'+x[0]+'</dt><dd>'+x[1]+'</dd></div>';}).join("")+'</dl></div>';
+  document.getElementById("cl").onclick=function(){select(-1);};
+  draw();
+}
+
+/* ── 表 ── */
+var PAGE=150, shown=0;
+function rowHTML(i){
+  var r=R[i], o=OV[i];
+  var de=r[DEITY]? esc(r[DEITY]).replace(/(饒速日|櫛玉|天火明)/g,'<em>$1</em>')
+                 : '<span class="dash">—</span>';
+  var fe=r[MONS]&&r[MONS].length
+    ? r[MONS].map(function(m){return '<span class="mo">'+m+'月</span>';}).join("")+
+      (r[FDATE]?'<br>'+esc(r[FDATE]):"")
+    : '<span class="dash">—</span>';
+  var j=JJ[i]||null;
+  var g=GZ[i]||null, w=WK[i]||null;
+  var rank=(j&&j.sk)||(g&&g.r)||(o&&o.rank)||"";
+  var rankH=rank?'<span class="rk">'+esc(rank)+'</span>':'<span class="dash">—</span>';
+  if((j&&j.ik)||(o&&o.sk)) rankH+='<span class="rk sk">式内</span>';
+  var b=BD[i]||null;
+  var sd=(j&&j.sd)||"";
+  var sdH;
+  if(b) sdH='<span class="bdg">由緒板</span><span class="sdt bd">'+esc(b.t.slice(0,64))+'…</span>';
+  else if(sd) sdH='<span class="bdg j">神社庁</span><span class="sdt">'+esc(sd.slice(0,64))+(sd.length>64?'…':'')+'</span>';
+  else if(g) sdH='<span class="bdg g'+(g.c==="B"?" b2":"")+'">'+(g.c==="A"?"地誌":"地誌?")+
+    '</span><span class="sdt gz">'+esc(VL[g.v]||"")+
+    (g.kj?' ／ 勧請元 '+esc(g.kj):'')+
+    (g.kw&&g.kw.length?' ／ '+esc(g.kw.slice(0,3).join("・")):'')+'</span>';
+  else if(w) sdH='<span class="bdg w">Wiki</span><span class="sdt">'+esc(w.t.slice(0,64))+'…</span>';
+  else if(o&&o.note) sdH='<span class="sdt kn">'+esc(o.note.slice(0,60))+'…</span>';
+  else sdH='<span class="dash">—</span>';
+  /* 出所へのリンク。表からも原本・元頁に直接飛べるように */
+  var lk=[];
+  if(g) lk.push('<a class="sl g" href="https://dl.ndl.go.jp/pid/'+g.p+'/1/'+g.k+
+    '" target="_blank" rel="noopener" title="'+esc(VL[g.v]||"")+' 第'+g.k+'コマ'+
+    (g.c==="B"?'（同名の別社の可能性あり）':'')+'">NDL'+(g.c==="B"?'?':'')+' ↗</a>');
+  if(j&&j.sd&&j.u) lk.push('<a class="sl j" href="'+esc(j.u)+
+    '" target="_blank" rel="noopener" title="'+esc(S[r[SRC]])+'">神社庁 ↗</a>');
+  if(w) lk.push('<a class="sl" href="https://ja.wikipedia.org/wiki/'+encodeURIComponent(w.n)+
+    '" target="_blank" rel="noopener" title="'+esc(w.n)+'">Wikipedia ↗</a>');
+  if(lk.length) sdH+='<span class="sls">'+lk.join("")+'</span>';
+  var memo=(j&&j.memo)||"";
+  var memoH=memo? '<span class="mm">'+esc(memo.slice(0,44))+(memo.length>44?'…':'')+'</span>'
+                : '<span class="dash">—</span>';
+  return '<tr class="'+(o?"hit ":"")+(b?"brd":"")+'" data-i="'+i+'">'+
+    '<td class="n">'+esc(r[NAME])+(r[TEMPLE]?'<span class="t">寺</span>':'')+
+      (j&&j.yomi?'<span class="ym">'+esc(j.yomi)+'</span>':'')+'</td>'+
+    '<td class="ad"><b>'+esc(P[r[PREF]])+'</b><br>'+esc(r[ADDR]||"")+'</td>'+
+    '<td>'+rankH+'</td>'+
+    '<td class="de">'+de+'</td>'+
+    '<td class="rs">'+sdH+'</td>'+
+    '<td class="fe">'+fe+'</td>'+
+    '<td class="mm-c">'+memoH+'</td>'+
+    '<td class="sr">'+esc(S[r[SRC]])+'</td></tr>';
+}
+function renderTable(reset){
+  var tb=document.getElementById("tb");
+  if(reset){tb.innerHTML="";shown=0;}
+  var html="",added=0,i=0,seen=0;
+  for(i=0;i<N&&added<PAGE;i++){
+    if(!vis[i])continue;
+    seen++;
+    if(seen<=shown)continue;
+    html+=rowHTML(i); added++;
+  }
+  tb.insertAdjacentHTML("beforeend",html);
+  shown+=added;
+  var more=document.getElementById("more");
+  if(shown<visN){more.hidden=false;more.textContent="さらに表示（残り "+(visN-shown).toLocaleString()+" 社）";}
+  else more.hidden=true;
+}
+document.getElementById("more").onclick=function(){renderTable(false);};
+document.getElementById("tb").addEventListener("click",function(e){
+  var tr=e.target.closest("tr[data-i]"); if(!tr||e.target.closest("a"))return;
+  var i=+tr.dataset.i;
+  view.k=26; view.tx=W/2-((X[i]-minX)*base.k+base.ox)*view.k;
+  view.ty=H/2-((Y[i]-minY)*base.k+base.oy)*view.k;
+  select(i);
+  document.querySelector(".mapwrap").scrollIntoView({behavior:"smooth",block:"center"});
+});
+
+/* ── 初期化 ── */
+(function init(){
+  var pc={},sc={};
+  for(var i=0;i<N;i++){pc[R[i][PREF]]=(pc[R[i][PREF]]||0)+1;sc[R[i][SRC]]=(sc[R[i][SRC]]||0)+1;}
+  var pe=document.getElementById("pref");
+  P.map(function(n,ix){return [n,ix,pc[ix]||0];}).sort(function(a,b){return b[2]-a[2];})
+   .forEach(function(x){var o=document.createElement("option");o.value=x[1];
+     o.textContent=x[0]+" ("+x[2]+")";pe.appendChild(o);});
+  var se=document.getElementById("src");
+  S.map(function(n,ix){return [n,ix,sc[ix]||0];}).sort(function(a,b){return b[2]-a[2];})
+   .forEach(function(x){var o=document.createElement("option");o.value=x[1];
+     o.textContent=x[0]+" ("+x[2]+")";se.appendChild(o);});
+  var me=document.getElementById("mon");
+  for(var m=1;m<=12;m++){var o=document.createElement("option");o.value=m;o.textContent=m+"月";me.appendChild(o);}
+  var ORD=["別格官幣社","官幣大社","官幣中社","官幣小社","国幣大社","国幣中社","国幣小社",
+           "県社","郷社","村社","無格社","別表神社","式内社"];
+  var rc={};
+  for(var k3 in JJ){if(JJ[k3].sk)rc[JJ[k3].sk]=(rc[JJ[k3].sk]||0)+1;}
+  var re_=document.getElementById("rank");
+  ORD.filter(function(x){return rc[x];}).forEach(function(x){
+    var o2=document.createElement("option");o2.value=x;o2.textContent=x+" ("+rc[x]+")";re_.appendChild(o2);});
+  Object.keys(rc).filter(function(x){return ORD.indexOf(x)<0;}).forEach(function(x){
+    var o3=document.createElement("option");o3.value=x;o3.textContent=x+" ("+rc[x]+")";re_.appendChild(o3);});
+  var nd=0,nf=0,no=0,ns=0,nk=0;
+  for(i=0;i<N;i++){if(R[i][DEITY])nd++;if(R[i][MONS]&&R[i][MONS].length)nf++;}
+  for(var k in OV)no++;
+  for(var k2 in JJ){if(JJ[k2].sd)ns++;if(JJ[k2].sk)nk++;}
+  var ng=0,nw=0,nb=0,nany=0,seen1={};
+  for(var k4 in GZ){ng++;seen1[k4]=1;}
+  for(var k5 in WK){nw++;seen1[k5]=1;}
+  for(var k6 in BD){nb++;seen1[k6]=1;}
+  for(var k7 in JJ){if(JJ[k7].sd)seen1[k7]=1;}
+  for(var k8 in seen1)nany++;
+  document.getElementById("hs").innerHTML=
+   [["社数",N.toLocaleString()],["社伝あり",nany.toLocaleString()],
+    ["神社庁",ns.toLocaleString()],["戦前神社誌",ng.toLocaleString()],
+    ["Wikipedia",nw.toLocaleString()],["由緒板",nb.toLocaleString()],
+    ["饒速日関係",no]]
+   .map(function(s){return '<div class="hstat"><dt>'+s[0]+'</dt><dd>'+s[1]+'</dd></div>';}).join("");
+
+  document.getElementById("q").oninput=function(e){F.q=e.target.value;applyFilter();};
+  document.getElementById("pref").onchange=function(e){F.pref=e.target.value===""?-1:+e.target.value;applyFilter();};
+  document.getElementById("src").onchange=function(e){F.src=e.target.value===""?-1:+e.target.value;applyFilter();};
+  document.getElementById("mon").onchange=function(e){F.mon=e.target.value===""?0:+e.target.value;applyFilter();};
+  document.getElementById("rank").onchange=function(e){F.rank=e.target.value;applyFilter();};
+  document.getElementById("fs").onchange=function(e){F.sd=e.target.checked;applyFilter();};
+  document.getElementById("fb").onchange=function(e){F.bd=e.target.checked;applyFilter();};
+  document.getElementById("sdsrc").onchange=function(e){F.ss=e.target.value;applyFilter();};
+  document.getElementById("fd").onchange=function(e){F.d=e.target.checked;applyFilter();};
+  document.getElementById("ff").onchange=function(e){F.f=e.target.checked;applyFilter();};
+  document.getElementById("fr").onchange=function(e){F.r=e.target.checked;applyFilter();};
+  document.getElementById("rst").onclick=function(){
+    F={q:"",pref:-1,src:-1,mon:0,rank:"",ss:"",d:false,f:false,r:false,sd:false,bd:false};
+    document.getElementById("q").value="";
+    ["pref","src","mon","rank","sdsrc"].forEach(function(id){document.getElementById(id).value="";});
+    ["fd","ff","fr","fs","fb"].forEach(function(id){document.getElementById(id).checked=false;});
+    select(-1); applyFilter();
+  };
+  window.addEventListener("resize",resize);
+  resize(); applyFilter();
+})();
+})();
+</script>
