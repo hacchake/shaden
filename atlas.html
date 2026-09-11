@@ -1,0 +1,1210 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>社伝地図</title>
+<meta name="description" content="全国70,204社の社伝・祭神・例祭を一枚の地図で。国土地理院の地図は重ねても外してもよい。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --ground:#F7F6F2; --surface:#FFFFFF; --surface-2:#FBFAF7;
+  --ink:#16181C; --muted:#63697A; --faint:#949AA6; --line:#E1DFD8; --line-2:#C9C6BC;
+  --shu:#B23A2E; --shu-soft:#F4E5E2; --ai:#4C6076; --ai-soft:#E5E9ED;
+  --kin:#9A7B33; --kin-soft:#F3ECDA; --moss:#4C6B4F; --moss-soft:#E4ECE4;
+  --f-d:"Zen Old Mincho",'Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-b:"Zen Kaku Gothic New",'Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --f-m:"Roboto Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#101216; --surface:#171A1F; --surface-2:#1C1F25;
+  --ink:#E9E7E1; --muted:#9AA1AE; --faint:#6B7280; --line:#282C33; --line-2:#3A3F48;
+  --shu:#E0685A; --shu-soft:#2E1D1A; --ai:#7C93AC; --ai-soft:#1B222A;
+  --kin:#C9A455; --kin-soft:#2A2314; --moss:#8FB093; --moss-soft:#18221A;
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--shu);outline-offset:1px}
+
+/* 上帯 */
+.bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 12px;
+  background:var(--surface);border-bottom:1px solid var(--line-2);z-index:1000}
+.ttl{font-family:var(--f-d);font-weight:700;font-size:18px;letter-spacing:.1em;
+  margin-right:6px;white-space:nowrap;color:inherit;text-decoration:none}
+.bar input[type=search],.bar select{font-size:12.5px;padding:5px 8px;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--surface-2)}
+.bar input[type=search]{flex:1 1 180px;min-width:120px}
+.bar select{font-family:var(--f-m);font-size:11.5px;max-width:130px}
+.pb,.tg{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-m);font-size:11px;
+  color:var(--muted);cursor:pointer;padding:4px 9px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2);white-space:nowrap;line-height:1.5}
+.pb:hover{border-color:var(--shu);color:var(--shu)}
+.pb.open{border-color:var(--ink);color:var(--ink)}
+.pb.on{border-color:var(--shu);color:var(--shu);background:var(--shu-soft)}
+.pb.on.open{background:var(--shu);color:#fff}
+.pb b{font-weight:500;font-variant-numeric:tabular-nums}
+.tg input{accent-color:var(--shu);margin:0}
+.tg:has(input:checked){border-color:var(--shu);color:var(--shu);background:var(--shu-soft)}
+.tg.k:has(input:checked){border-color:var(--kin);color:var(--kin);background:var(--kin-soft)}
+.tg.ai:has(input:checked){border-color:var(--ai);color:var(--ai);background:var(--ai-soft)}
+.cnt{margin-left:auto;font-family:var(--f-m);font-size:11.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.cnt b{color:var(--ink);font-weight:500}
+
+/* 地図 */
+.body{flex:1;position:relative;min-height:0}
+#map{position:absolute;inset:0}
+#map.nomap{background:var(--ground)}
+#pts{position:absolute;inset:0;pointer-events:none;z-index:450}
+.leaflet-container{background:var(--surface-2);font-family:var(--f-b)}
+.lgd{position:absolute;right:10px;bottom:22px;z-index:600;background:var(--surface);
+  border:1px solid var(--line);border-radius:2px;padding:7px 10px;font-family:var(--f-m);
+  font-size:10.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;max-width:180px}
+.lgd span{display:flex;align-items:center;gap:6px}
+.lgd i{width:9px;height:9px;border-radius:50%;display:block;flex:none}
+.drawer:not([hidden]) ~ .lgd{bottom:calc(44% + 12px)}
+.hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;
+  background:var(--ink);color:var(--ground);font-size:12px;padding:5px 12px;border-radius:2px;
+  opacity:.92;pointer-events:none;transition:opacity .3s;white-space:nowrap}
+.hint.off{opacity:0}
+
+/* 開く欄(絞り込み・例祭・近く・くらべる) */
+.pop{position:absolute;left:54px;top:12px;z-index:680;width:min(340px,88vw);
+  max-height:calc(100% - 24px);overflow-y:auto;
+  background:var(--surface);border:1px solid var(--line-2);border-radius:3px;
+  padding:12px 13px 13px;box-shadow:0 4px 18px rgba(0,0,0,.13)}
+.pop h3{font-family:var(--f-d);font-size:15px;margin:0 0 3px;letter-spacing:.05em}
+.pop .lead{font-size:11px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+.pclose{position:absolute;right:8px;top:8px;border:0;background:none;color:var(--faint);
+  cursor:pointer;font-family:var(--f-m);font-size:11px}
+.pclose:hover{color:var(--shu)}
+.frow{display:grid;grid-template-columns:78px 1fr;align-items:center;gap:8px;margin:0 0 8px}
+.frow>label{font-family:var(--f-m);font-size:10.5px;color:var(--muted)}
+.frow select,.frow input{font-size:12px;padding:4px 6px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2);min-width:0;width:100%}
+.frow .two{display:flex;align-items:center;gap:5px}
+.chk{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px}
+.act{font-family:var(--f-m);font-size:11px;padding:5px 10px;border:1px solid var(--shu);
+  color:var(--shu);background:var(--surface);border-radius:2px;cursor:pointer}
+.act:hover{background:var(--shu);color:#fff}
+.act.on{background:var(--shu);color:#fff}
+.quick{display:flex;gap:5px;margin:0 0 8px}
+.quick button{font-family:var(--f-m);font-size:10.5px;padding:3px 8px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2);cursor:pointer;color:var(--muted)}
+.quick button:hover{border-color:var(--ai);color:var(--ai)}
+.reset{font-family:var(--f-m);font-size:10.5px;color:var(--faint);background:none;border:0;
+  cursor:pointer;padding:2px 0;text-decoration:underline}
+.reset:hover{color:var(--shu)}
+.nstat{font-family:var(--f-m);font-size:11px;color:var(--muted);margin:0 0 6px;line-height:1.6}
+
+/* くらべる */
+.qrow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sw{width:17px;height:17px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.22)}
+.qrow input[type=text]{flex:1;min-width:0;font-size:12.5px;padding:5px 7px;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--surface-2)}
+.qn{font-family:var(--f-m);font-size:10.5px;color:var(--muted);min-width:52px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.qdel{border:0;background:none;color:var(--faint);cursor:pointer;font-size:13px;padding:0 2px}
+.qdel:hover{color:var(--shu)}
+.qopt{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.qopt label{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-m);font-size:10.5px;
+  color:var(--muted);cursor:pointer}
+.qopt input{accent-color:var(--shu);margin:0}
+.qopt select{font-family:var(--f-m);font-size:10.5px;padding:3px 5px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2)}
+.qadd{font-family:var(--f-m);font-size:11px;color:var(--ai);background:none;border:0;cursor:pointer;padding:3px 0}
+.qadd:hover{color:var(--shu)}
+.qov{margin-top:8px;font-family:var(--f-m);font-size:10.5px;color:var(--muted);line-height:1.8}
+.qov b{color:var(--ink)}
+
+/* 詳細 */
+.panel{position:absolute;right:0;top:0;bottom:0;width:min(410px,92vw);z-index:700;
+  background:var(--surface);border-left:1px solid var(--line-2);overflow-y:auto;
+  transform:translateX(101%);transition:transform .22s ease;padding:16px 18px 40px}
+.panel.on{transform:none}
+.panel h2{font-family:var(--f-d);font-size:21px;margin:0 0 3px;letter-spacing:.04em;padding-right:70px}
+.panel .sub{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+.cls{position:absolute;right:10px;top:10px;font-family:var(--f-m);font-size:11px;
+  background:none;border:1px solid var(--line-2);border-radius:2px;color:var(--muted);
+  cursor:pointer;padding:3px 8px}
+.cls:hover{border-color:var(--shu);color:var(--shu)}
+.fld{margin:0 0 12px}
+.fld dt{font-family:var(--f-m);font-size:9.5px;letter-spacing:.09em;color:var(--faint);margin:0 0 3px}
+.fld dd{margin:0;font-size:13px;line-height:1.75}
+.txt{max-height:260px;overflow-y:auto;font-size:12.5px;line-height:1.85;white-space:pre-wrap;
+  padding:9px 11px;background:var(--surface-2);border-left:2px solid var(--shu);border-radius:2px}
+.txt.g{border-left-color:var(--kin)} .txt.w{border-left-color:var(--ai)} .txt.b{border-left-color:var(--moss)}
+.rk{display:inline-block;font-family:var(--f-m);font-size:10px;padding:1px 6px;border-radius:2px;
+  background:var(--shu-soft);color:var(--shu);border-left:2px solid var(--shu)}
+.rk.sk{background:var(--ai-soft);color:var(--ai);border-left-color:var(--ai);margin-left:4px}
+.kw{display:inline-block;font-family:var(--f-m);font-size:9.5px;padding:1px 5px;margin:0 3px 3px 0;
+  border-radius:2px;background:var(--kin-soft);color:var(--kin);border:1px solid var(--kin)}
+.lk{color:var(--ai);font-family:var(--f-m);font-size:11.5px;text-decoration:none;
+  border-bottom:1px solid currentColor}
+.lk:hover{color:var(--shu)}
+.meta{font-family:var(--f-m);font-size:10px;color:var(--faint);margin-top:4px}
+.nigi{color:var(--kin);font-weight:500}
+.dash{color:var(--faint);font-family:var(--f-m);font-size:11px}
+.fest{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.fest:last-child{border-bottom:0}
+.fest .fn{font-weight:500}
+.fest .fd{font-size:12px;color:var(--muted)}
+.badge{display:inline-block;font-family:var(--f-m);font-size:9.5px;padding:1px 6px;border-radius:9px;
+  background:var(--ai-soft);color:var(--ai);white-space:nowrap}
+.badge.now{background:var(--moss-soft);color:var(--moss)}
+.badge.soon{background:var(--shu-soft);color:var(--shu)}
+.chb{border:1px solid var(--kin);border-left-width:3px;border-radius:2px;padding:9px 11px;margin:0 0 8px;
+  background:var(--kin-soft)}
+.chb .cht{font-size:12.5px;margin:0 0 5px}
+.chb .ly{font-family:var(--f-m);font-size:9.5px;color:var(--kin);border:1px solid var(--kin);
+  padding:0 5px;border-radius:2px;margin-left:4px;white-space:nowrap}
+.chb dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;line-height:1.6}
+.chb dt{font-family:var(--f-m);font-size:9.5px;color:var(--faint);padding-top:2px}
+.chb dd{margin:0}
+
+/* 一覧 */
+.drawer{position:absolute;left:0;right:0;bottom:0;height:44%;z-index:690;background:var(--surface);
+  border-top:1px solid var(--line-2);display:flex;flex-direction:column;box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+.dhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 12px;border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:2px;margin-right:6px}
+.tab{font-family:var(--f-d);font-size:14px;padding:3px 10px;border:0;border-bottom:2px solid transparent;
+  background:none;cursor:pointer;color:var(--muted);letter-spacing:.04em}
+.tab b{font-family:var(--f-m);font-size:10.5px;font-weight:400;color:var(--faint);margin-left:3px;
+  font-variant-numeric:tabular-nums}
+.tab.on{color:var(--ink);border-bottom-color:var(--shu)}
+.dctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dctl select{font-family:var(--f-m);font-size:11px;padding:3px 6px;border:1px solid var(--line-2);
+  border-radius:2px;background:var(--surface-2);max-width:150px}
+.dclose{margin-left:auto;font-family:var(--f-m);font-size:11px;background:none;border:1px solid var(--line-2);
+  border-radius:2px;color:var(--muted);cursor:pointer;padding:3px 8px}
+.dclose:hover{border-color:var(--shu);color:var(--shu)}
+.dbody{flex:1;overflow:auto;min-height:0}
+table{border-collapse:collapse;width:100%;min-width:1060px;font-size:12.5px}
+thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);font-family:var(--f-m);
+  font-size:10px;letter-spacing:.08em;color:var(--muted);font-weight:500;text-align:left;
+  padding:7px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--line);cursor:pointer}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.hit{background:var(--kin-soft)}
+tbody tr.sel{box-shadow:inset 3px 0 0 var(--shu)}
+td{padding:7px 10px;vertical-align:top}
+td.n{font-family:var(--f-d);font-size:14px;min-width:10ch}
+td.n .t{font-family:var(--f-m);font-size:9px;color:var(--ai);border:1px solid var(--ai);
+  padding:0 3px;margin-left:5px;border-radius:2px;vertical-align:2px}
+td.n .ym{display:block;font-family:var(--f-b);font-size:10.5px;color:var(--faint)}
+td.ad{font-size:11.5px;color:var(--muted);min-width:14ch}
+td.ad b{color:var(--ink);font-weight:500}
+td.de{max-width:22ch;font-size:12px}
+td.de em{font-style:normal;color:var(--kin);font-weight:500}
+td.rs{max-width:36ch}
+td.fe{min-width:16ch;font-size:11.5px}
+td.km{font-family:var(--f-m);font-size:11px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sdt{font-size:11.5px;line-height:1.5}
+.sdt.gz{color:var(--muted)}
+.bdg{display:inline-block;font-family:var(--f-m);font-size:9px;padding:1px 4px;margin-right:5px;
+  border-radius:2px;color:#fff;background:var(--moss);vertical-align:1px}
+.bdg.j{background:var(--shu)} .bdg.g{background:var(--kin)} .bdg.w{background:var(--ai)}
+.bdg.g.b2{background:transparent;color:var(--kin);border:1px solid var(--kin)}
+.sls{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.sl{font-family:var(--f-m);font-size:9.5px;line-height:1.6;padding:0 6px;border:1px solid currentColor;
+  border-radius:2px;text-decoration:none;color:var(--ai);white-space:nowrap}
+.sl.g{color:var(--kin)} .sl.j{color:var(--shu)}
+.sl:hover{background:var(--surface-2)}
+.chip{display:inline-block;font-family:var(--f-m);font-size:9.5px;padding:0 5px;border-radius:2px;
+  border:1px solid var(--kin);color:var(--kin);white-space:nowrap}
+.chip.on{background:var(--kin);color:#fff}
+.more{display:block;width:100%;padding:10px;background:var(--surface-2);border:0;border-top:1px solid var(--line);
+  font-family:var(--f-m);font-size:11.5px;color:var(--muted);cursor:pointer}
+.more:hover{color:var(--shu)}
+.empty{padding:24px;text-align:center;color:var(--faint);font-size:12.5px}
+
+.load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  z-index:900;background:var(--ground);font-family:var(--f-m);font-size:13px;color:var(--muted);
+  flex-direction:column;gap:10px}
+.spin{width:26px;height:26px;border:2px solid var(--line-2);border-top-color:var(--shu);
+  border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}.panel{transition:none}}
+@media (max-width:640px){
+  .ttl{font-size:15px}.bar{padding:6px 8px;gap:5px}
+  .pop{left:8px;width:calc(100vw - 16px)}
+  .drawer{height:55%}
+  .drawer:not([hidden]) ~ .lgd{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="bar">
+    <a class="ttl" href="./">社伝地図</a>
+    <input type="search" id="q" placeholder="社名・住所・祭神・社伝で検索" aria-label="検索">
+    <select id="pref" aria-label="都道府県"><option value="">全国</option></select>
+    <button class="pb" type="button" data-pop="pop-filter" id="b-filter">絞り込み</button>
+    <button class="pb" type="button" data-pop="pop-fest" id="b-fest">例祭</button>
+    <button class="pb" type="button" data-pop="pop-near" id="b-near">近く</button>
+    <button class="pb" type="button" data-pop="qpanel" id="b-comp">くらべる</button>
+    <label class="tg ai" title="国土地理院の地図を重ねる／外す"><input type="checkbox" id="basemap" checked>地図</label>
+    <button class="pb" type="button" id="b-list">一覧</button>
+    <span class="cnt" id="cnt">読み込み中…</span>
+  </header>
+
+  <div class="body">
+    <div id="map"></div>
+    <canvas id="pts"></canvas>
+    <div class="hint" id="hint">点を押すと社伝が出ます</div>
+
+    <!-- 絞り込み -->
+    <div class="pop" id="pop-filter" hidden>
+      <button class="pclose" type="button">✕</button>
+      <h3>絞り込み</h3>
+      <p class="lead">社伝の出所・社格・データの出典で絞る。</p>
+      <div class="frow"><label for="sd">社伝の出所</label>
+        <select id="sd"><option value="">問わない</option><option value="any">社伝があるもの</option>
+          <option value="j">神社庁</option><option value="g">戦前の地誌</option>
+          <option value="ga">戦前の地誌（確度A）</option><option value="w">Wikipedia</option>
+          <option value="b">現地の由緒板</option></select></div>
+      <div class="frow"><label for="rank">社格</label>
+        <select id="rank"><option value="">問わない</option></select></div>
+      <div class="frow"><label for="kind">種別</label>
+        <select id="kind"><option value="">神社と寺院</option><option value="s">神社のみ</option>
+          <option value="t">寺院のみ</option></select></div>
+      <div class="frow"><label for="src">データの出典</label>
+        <select id="src"><option value="">問わない</option></select></div>
+      <div class="chk">
+        <label class="tg"><input type="checkbox" id="fd">祭神の記載あり</label>
+        <label class="tg"><input type="checkbox" id="fsk">式内</label>
+        <label class="tg"><input type="checkbox" id="fb">由緒板あり</label>
+        <label class="tg k"><input type="checkbox" id="fr">饒速日関係</label>
+      </div>
+      <button class="reset" type="button" id="freset">条件を外す</button>
+    </div>
+
+    <!-- 例祭 -->
+    <div class="pop" id="pop-fest" hidden>
+      <button class="pclose" type="button">✕</button>
+      <h3>例祭</h3>
+      <p class="lead">「10月第2日曜」「7月下旬」のような書き方も、実際の日付に直して当てる。旧暦は月単位で扱う。</p>
+      <div class="frow"><label for="fmon">月</label>
+        <select id="fmon"><option value="0">問わない</option><option value="-1">今月</option>
+          <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+          <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+          <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select></div>
+      <div class="frow"><label>期間</label>
+        <div class="two"><input type="date" id="fs1" aria-label="開始日">〜<input type="date" id="fs2" aria-label="終了日"></div></div>
+      <div class="quick">
+        <button type="button" data-days="0">今日</button>
+        <button type="button" data-days="6">この1週間</button>
+        <button type="button" data-days="29">この30日</button>
+      </div>
+      <div class="chk"><label class="tg"><input type="checkbox" id="fhas">例祭の記載があるもの</label></div>
+      <button class="reset" type="button" id="fsreset">条件を外す</button>
+    </div>
+
+    <!-- 近く -->
+    <div class="pop" id="pop-near" hidden>
+      <button class="pclose" type="button">✕</button>
+      <h3>近く</h3>
+      <p class="lead">地点を決めると半径で絞り、一覧に距離と次の例祭までの日数が出る。</p>
+      <div class="chk">
+        <button class="act" type="button" id="ngps">現在地から</button>
+        <button class="act" type="button" id="nclick">地図を押して決める</button>
+      </div>
+      <div class="frow"><label for="nrad">半径</label>
+        <select id="nrad"><option value="5">5 km</option><option value="10" selected>10 km</option>
+          <option value="20">20 km</option><option value="50">50 km</option><option value="0">制限なし</option></select></div>
+      <div class="nstat" id="nstat">地点はまだ決めていない</div>
+      <button class="reset" type="button" id="nreset">地点を外す</button>
+    </div>
+
+    <!-- くらべる -->
+    <div class="pop" id="qpanel" hidden>
+      <button class="pclose" type="button">✕</button>
+      <h3>くらべる</h3>
+      <p class="lead">複数の語を色分けして重ねる。両方に当たる社は円を分けて両方の色で描く。</p>
+      <div id="qrows"></div>
+      <button class="qadd" id="qadd" type="button">＋ 語を追加</button>
+      <div class="qopt">
+        <select id="qscope" aria-label="検索対象">
+          <option value="deity">祭神から探す</option>
+          <option value="all">すべてから探す</option>
+        </select>
+        <label><input type="checkbox" id="qsyn" checked>表記ゆれを展開</label>
+        <label><input type="checkbox" id="qonly">当たった社だけ</label>
+        <label><input type="checkbox" id="qboth">重なりだけ</label>
+      </div>
+      <div class="qov" id="qov"></div>
+    </div>
+
+    <section class="drawer" id="drawer" hidden aria-label="一覧">
+      <div class="dhead">
+        <div class="tabs" role="tablist">
+          <button class="tab on" type="button" data-tab="s" role="tab">神社<b id="t-s"></b></button>
+          <button class="tab" type="button" data-tab="c" role="tab">饒速日鎮座録<b id="t-c"></b></button>
+        </div>
+        <div class="dctl" id="ctl-s">
+          <select id="sort" aria-label="並び順">
+            <option value="">並び: 既定</option>
+            <option value="near">距離が近い順</option>
+            <option value="date">例祭が近い順</option>
+            <option value="rec">おすすめ（近くて間近）</option>
+          </select>
+          <label class="tg"><input type="checkbox" id="inview">地図に見えている範囲だけ</label>
+        </div>
+        <div class="dctl" id="ctl-c" hidden>
+          <select id="c-ly" aria-label="層"><option value="">層すべて</option></select>
+          <select id="c-dp" aria-label="底本"><option value="">底本すべて</option></select>
+          <select id="c-rk" aria-label="社格"><option value="">社格すべて</option></select>
+          <label class="tg"><input type="checkbox" id="c-si">式内</label>
+          <label class="tg"><input type="checkbox" id="c-de">社殿の記述あり</label>
+          <label class="tg k"><input type="checkbox" id="c-at">地図に載るもの</label>
+        </div>
+        <button class="dclose" type="button" id="dclose">閉じる ✕</button>
+      </div>
+      <div class="dbody" id="dbody">
+        <table><thead id="th"></thead><tbody id="tb"></tbody></table>
+        <div class="empty" id="empty" hidden>条件に合うものがない</div>
+        <button class="more" type="button" id="more" hidden></button>
+      </div>
+    </section>
+
+    <div class="lgd" id="lgd"></div>
+    <aside class="panel" id="panel" aria-label="詳細"></aside>
+    <div class="load" id="load"><div class="spin"></div><div id="loadtxt">データを読み込んでいます（約5MB）</div></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+"use strict";
+var NAME=0,PREF=1,LAT=2,LNG=3,ADDR=4,DEITY=5,MONS=6,FDATE=7,SRC=8,TEMPLE=9,URL=10,FEST=11,OFF=12;
+var R=[],P=[],S=[],VOLS=[],JJ={},GZ={},WK={},BD={},OV={},CH=[],CHBY={};
+var N=0,vis=null,visN=0,sel=-1;
+var RANK=null,SHIKI=null,NEXT=null,KM=null,HAYS=null;
+var F={q:"",pref:-1,sd:"",rank:"",src:-1,kind:"",d:false,sk:false,b:false,r:false,
+       mon:0,r1:null,r2:null,has:false};
+var O={lat:null,lng:null,rad:10,label:""},picking=false;
+var TAB="s",LIST=[],shown=0,PAGE=150,autoOpened=false;
+var CF={ly:"",dp:"",rk:"",si:false,de:false,at:false};
+
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ── 地図 ─────────────────────────────── */
+var map=L.map('map',{preferCanvas:true,zoomControl:true,minZoom:4,maxZoom:18}).setView([36.2,138.2],5);
+var GSIA='<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>';
+var gsi=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{attribution:GSIA,maxZoom:18});
+var pale=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{attribution:GSIA,maxZoom:18});
+var photo=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{attribution:GSIA,maxZoom:18});
+var osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',maxZoom:19});
+var NONE=L.layerGroup();
+var BASES=[gsi,pale,photo,osm,NONE],lastBase=gsi;
+gsi.addTo(map);
+L.control.layers({"地理院 標準":gsi,"地理院 淡色":pale,"航空写真":photo,"OpenStreetMap":osm,"地図なし（点だけ）":NONE},
+  null,{position:'topright'}).addTo(map);
+L.control.scale({imperial:false}).addTo(map);
+function baseChanged(layer){
+  var off=layer===NONE;
+  if(!off) lastBase=layer;
+  $('basemap').checked=!off;
+  $('map').classList.toggle('nomap',off);
+  draw();
+}
+map.on('baselayerchange',function(e){baseChanged(e.layer);});
+$('basemap').onchange=function(e){
+  var want=e.target.checked?lastBase:NONE;
+  BASES.forEach(function(l){if(l!==want&&map.hasLayer(l))map.removeLayer(l);});
+  if(!map.hasLayer(want)) map.addLayer(want);
+  baseChanged(want);
+};
+
+var cv=$('pts'),ctx=cv.getContext('2d');
+function size(){
+  var dpr=Math.min(window.devicePixelRatio||1,2),b=map.getSize();
+  cv.width=b.x*dpr; cv.height=b.y*dpr; cv.style.width=b.x+'px'; cv.style.height=b.y+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+/* ── 例祭の日付(近くの神社まつり の日付エンジンを移植) ─────────── */
+var NOW=new Date(),TY=NOW.getFullYear(),TM=NOW.getMonth()+1,TD=NOW.getDate();
+var TODAY=new Date(TY,TM-1,TD);
+function normalizeDateStr(s){
+  if(!s)return s;
+  s=s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);});
+  var kd={'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+  function k2n(k){
+    if(k==='十')return 10;
+    var idx=k.indexOf('十');
+    if(idx<0)return k.length===1&&(k in kd)?kd[k]:null;
+    var t=idx>0?kd[k[0]]:1,os=k.slice(idx+1),o=os?kd[os]:0;
+    if(t==null||(os&&o==null))return null;
+    return t*10+(o||0);
+  }
+  return s.replace(/[一二三四五六七八九十]+(?=[月日])/g,function(m){var n=k2n(m);return n!==null?String(n):m;});
+}
+function resolveNthWeekday(year,month,nth,wd){
+  var wdMap={日:0,月:1,火:2,水:3,木:4,金:5,土:6};
+  var w=typeof wd==='string'?(wd in wdMap?wdMap[wd]:-1):wd;
+  if(w<0)return null;
+  var d;
+  if(nth==='last'){d=new Date(year,month,0);while(d.getDay()!==w)d.setDate(d.getDate()-1);return d;}
+  d=new Date(year,month-1,1);var c=0;
+  while(true){
+    if(d.getDay()===w){c++;if(c===nth)return d;}
+    d.setDate(d.getDate()+1);
+    if(d.getMonth()!==month-1)return null;
+  }
+}
+var HOLIDAY_FIXED={'元日':[1,1],'建国記念の日':[2,11],'昭和の日':[4,29],'山の日':[8,11],'文化の日':[11,3],'勤労感謝の日':[11,23]};
+var HOLIDAY_NTH_MONDAY={'成人の日':[1,2],'海の日':[7,3],'敬老の日':[9,3],'体育の日':[10,2],'スポーツの日':[10,2]};
+function equinoxDay(y,k){var b=k==='spring'?20.8431:23.2488;return Math.floor(b+0.242194*(y-1980)-Math.floor((y-1980)/4));}
+/* 月しか分からないものは approx を付ける(旧暦は "旧") */
+function monthRange(y,m,lunar){return{start:new Date(y,m-1,1),end:new Date(y,m-1,new Date(y,m,0).getDate()),approx:lunar?"旧":"月",m:m};}
+function resolveNthWeekdayGroup(rest,year,month){
+  if(!/^(第|最終|土|日|月|火|水|木|金)/.test(rest))return null;
+  var pre=rest.slice(0,20),nths=[],wds=[],m,re1=/第?(\d+|最終)/g,re2=/(土|日|月|火|水|木|金)(?:曜日?)?/g;
+  while((m=re1.exec(pre)))nths.push(m[1]==='最終'?'last':parseInt(m[1],10));
+  while((m=re2.exec(pre)))wds.push(m[1]);
+  if(!nths.length||!wds.length)return null;
+  var pairs=[];
+  if(nths.length===1)wds.forEach(function(w){pairs.push([nths[0],w]);});
+  else if(wds.length===1)nths.forEach(function(n){pairs.push([n,wds[0]]);});
+  else if(nths.length===wds.length)nths.forEach(function(n,i){pairs.push([n,wds[i]]);});
+  else nths.forEach(function(n){wds.forEach(function(w){pairs.push([n,w]);});});
+  var seen={},out=[];
+  pairs.forEach(function(p){var d=resolveNthWeekday(year,month,p[0],p[1]);
+    if(d&&!seen[d.getTime()]){seen[d.getTime()]=1;out.push({start:d,end:d});}});
+  return out.length?out:null;
+}
+function resolveInMonth(rest,year,month){
+  var g=resolveNthWeekdayGroup(rest,year,month);if(g)return g;
+  var m=rest.match(/^(\d+)日?[〜～、．.／/・\-](\d+)日/);
+  if(m)return[{start:new Date(year,month-1,+m[1]),end:new Date(year,month-1,+m[2])}];
+  m=rest.match(/^(\d+)日/);
+  if(m){var d=new Date(year,month-1,+m[1]);return[{start:d,end:d}];}
+  m=rest.match(/^(上旬|中旬|下旬)/);
+  if(m){var last=new Date(year,month,0).getDate(),rg={'上旬':[1,10],'中旬':[11,20],'下旬':[21,last]}[m[1]];
+    return[{start:new Date(year,month-1,rg[0]),end:new Date(year,month-1,Math.min(rg[1],last)),approx:m[1],m:month}];}
+  return null;
+}
+function resolveHoliday(t,y){
+  var n,d;
+  for(n in HOLIDAY_FIXED)if(t.indexOf(n)>=0){d=new Date(y,HOLIDAY_FIXED[n][0]-1,HOLIDAY_FIXED[n][1]);return[{start:d,end:d}];}
+  for(n in HOLIDAY_NTH_MONDAY)if(t.indexOf(n)>=0){d=resolveNthWeekday(y,HOLIDAY_NTH_MONDAY[n][0],HOLIDAY_NTH_MONDAY[n][1],'月');if(d)return[{start:d,end:d}];}
+  if(t.indexOf('春分の日')>=0){d=new Date(y,2,equinoxDay(y,'spring'));return[{start:d,end:d}];}
+  if(t.indexOf('秋分の日')>=0){d=new Date(y,8,equinoxDay(y,'autumn'));return[{start:d,end:d}];}
+  return null;
+}
+function resolveFestivalOccurrences(raw,mh,year){
+  var ds=(raw||'').trim();
+  if(!ds)return mh?[monthRange(year,mh)]:[];
+  var t=normalizeDateStr(ds),m;
+  // 旧暦。「例祭9月20日…旧暦の10月」のように後ろの説明文に出る「旧」では判定しない
+  if(/^[^\d]*旧/.test(t)){
+    m=t.match(/(\d+)月/)||t.match(/(\d{1,2})\/(\d{1,2})/);
+    if(m)return[monthRange(year,+m[1],true)];
+    return mh?[monthRange(year,mh)]:[];
+  }
+  if(t.indexOf('毎月')===0){
+    var rest=t.slice(2),occ=[];
+    for(var k=1;k<=12;k++){var r=resolveInMonth(rest,year,k);if(r)occ=occ.concat(r);}
+    if(occ.length)return occ;
+    return mh?[monthRange(year,mh)]:[];
+  }
+  var h=resolveHoliday(t,year);if(h)return h;
+  var mm=t.match(/(\d+)月/);
+  if(mm){var mo=+mm[1];
+    if(mo>=1&&mo<=12){var res=resolveInMonth(t.slice(mm.index+mm[0].length),year,mo);return res||[monthRange(year,mo)];}}
+  var re=/(\d{1,2})\/(\d{1,2})/g,out=[];
+  while((m=re.exec(t))){var a=+m[1],b=+m[2];
+    if(a>=1&&a<=12){var d=new Date(year,a-1,b);if(d.getMonth()===a-1)out.push({start:d,end:d});}}
+  if(out.length)return out;
+  return mh?[monthRange(year,mh)]:[];
+}
+function festivalMatchesMonth(f,month){
+  function chk(y){return resolveFestivalOccurrences(f.date_str,f.month,y).some(function(o){
+    return o.start.getMonth()+1===month||o.end.getMonth()+1===month;});}
+  return chk(TY)||chk(TY+1);
+}
+function findRangeOccurrence(f,s,e){
+  var ys=[s.getFullYear()];if(e.getFullYear()!==ys[0])ys.push(e.getFullYear());
+  for(var i=0;i<ys.length;i++){var occ=resolveFestivalOccurrences(f.date_str,f.month,ys[i]);
+    for(var j=0;j<occ.length;j++)if(occ[j].start<=e&&occ[j].end>=s)return occ[j];}
+  return null;
+}
+/* 次回の開催日。毎年繰り返す前提で、今日より前なら来年に送る */
+function nextOccurrence(f){
+  for(var y=TY;y<=TY+1;y++){
+    var occ=resolveFestivalOccurrences(f.date_str,f.month,y),best=null;
+    for(var j=0;j<occ.length;j++){var o=occ[j];
+      if(o.end>=TODAY&&(!best||o.start<best.start))best=o;}
+    if(best)return best;
+  }
+  return null;
+}
+/* 並べ替えの鍵(今日からの日数)。月・旬しか分からないものは期間の中ほどに置く */
+function occKey(o,from){
+  var s=o.start<from?from:o.start,n=Math.round((s-TODAY)/864e5);
+  return o.approx?n+(o.approx==="月"||o.approx==="旧"?15:5):n;
+}
+function fo(f){return{date_str:f[0],month:f[2]||null};}
+/* この社の例祭のうち、いまの条件でいちばん近いもの */
+function festInfo(i){
+  var fs=R[i][FEST];if(!fs||!fs.length)return null;
+  var mon=F.mon===-1?TM:F.mon,best=null;
+  for(var k=0;k<fs.length;k++){
+    var f=fo(fs[k]),o=null;
+    if(F.r1)o=findRangeOccurrence(f,F.r1,F.r2);
+    else if(mon){if(!festivalMatchesMonth(f,mon))continue;
+      var occ=resolveFestivalOccurrences(f.date_str,f.month,TY).concat(resolveFestivalOccurrences(f.date_str,f.month,TY+1));
+      for(var j=0;j<occ.length;j++){var o2=occ[j];
+        if(o2.end>=TODAY&&(o2.start.getMonth()+1===mon||o2.end.getMonth()+1===mon)){o=o2;break;}}}
+    else o=nextOccurrence(f);
+    if(!o)continue;
+    var key=occKey(o,F.r1||TODAY);
+    if(!best||key<best.key)best={k:k,o:o,key:key,f:fs[k]};
+  }
+  return best;
+}
+/* 日数の札。月・旬しか分からないものに「今日」「N日後」は付けない */
+function badge(fi){
+  if(!fi)return "";
+  var o=fi.o;
+  if(o.end<TODAY||o.approx==="旧")return "";
+  var s=o.start<TODAY?TODAY:o.start,n=Math.round((s-TODAY)/864e5);
+  var mo=(s.getFullYear()-TY)*12+(s.getMonth()-(TM-1));
+  var mb=mo<=0?'<span class="badge now">今月</span>':'<span class="badge">'+mo+'ヶ月後</span>';
+  if(o.approx)return mb;
+  if(o.start<=TODAY)return '<span class="badge soon">'+(o.end>o.start?'開催中':'今日')+'</span>';
+  if(n===1)return '<span class="badge soon">明日</span>';
+  if(n<=30)return '<span class="badge soon">'+n+'日後</span>';
+  return mb;
+}
+function when(o){
+  if(o.approx==="旧")return "旧暦"+o.m+"月";
+  if(o.approx==="月")return o.m+"月中";
+  if(o.approx)return o.m+"月"+o.approx;
+  return o.end>o.start?md(o.start)+"〜"+md(o.end):md(o.start);
+}
+function md(d){return (d.getMonth()+1)+'/'+d.getDate();}
+
+/* ── 検索語の正規化(全角→半角・カナ→かな) ─── */
+function norm(s){
+  return (s||"").replace(/[！-～]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);})
+    .replace(/　/g," ").replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);}).toLowerCase();
+}
+function buildHays(){
+  if(HAYS)return;
+  HAYS=new Array(N);
+  for(var i=0;i<N;i++){var r=R[i],j=JJ[i],w=WK[i],b=BD[i],g=GZ[i];
+    HAYS[i]=norm(r[NAME]+" "+r[ADDR]+" "+r[DEITY]+" "+(j?(j.sd||"")+(j.memo||"")+(j.yomi||""):"")+
+      (w?w.t:"")+(b?b.t:"")+(g?(g.kj||"")+(g.kw?g.kw.join(""):""):""));}
+}
+
+/* ── くらべる ─────────────────────────── */
+var SYN=[
+ ["素戔嗚","素盞嗚","素盞鳴","素戔鳴","須佐之男","須佐男","須左之男","建速須佐","速須佐","牛頭天王","武塔"],
+ ["大国主","大國主","大己貴","大穴牟遅","大穴持","大汝","八千矛","葦原醜男","顕国玉","宇都志国玉","大物主","三輪明神"],
+ ["天照","天照大神","天照大御神","大日孁","大日靈","皇大神","天照皇"],
+ ["応神","應神","誉田別","譽田別","品陀和気","八幡大神","八幡神"],
+ ["稲荷","稻荷","宇迦之御魂","宇迦能御魂","倉稲魂","倉稻魂","保食","御饌津"],
+ ["菅原道真","菅原","天満大自在天神","天満天神","天神"],
+ ["饒速日","櫛玉","櫛甕","天火明","天照国照","天照國照","宇摩志麻治","可美真手","物部"],
+ ["木花","木花開耶","木花之佐久夜","浅間大神","淺間大神","許乃花"],
+ ["伊弉諾","伊邪那岐","伊弉冉","伊邪那美"],
+ ["日本武","倭建","倭武"],
+ ["猿田彦","猨田彦","佐田彦","庚申"],
+ ["少彦名","少名毘古那"],
+ ["住吉","底筒男","中筒男","表筒男"],
+ ["市杵島","市寸島","狭依毘売","弁財天","辨財天","厳島","嚴島"],
+ ["建御名方","武御名方","健御名方","諏訪"],
+ ["経津主","經津主","武甕槌","建御雷","香取","鹿島","鹿嶋"],
+ ["白山","菊理媛","白山比咩","白山比売"],
+ ["熊野","家都御子","速玉","夫須美"],
+ ["金山彦","金山毘古","金屋子"],
+ ["大山祇","大山積","大山津見","和多志"]
+];
+var QC=["#D9342B","#2563C9","#1F8A5B","#8E44AD","#E08A00"],QN=["朱","藍","緑","紫","橙"];
+var QS=[{t:""},{t:""}],QF={scope:"deity",syn:true,only:false,both:false};
+var qmask=null,qcnt=[0,0,0,0,0],qov=0,qact=[],HAY=null;
+function expand(t){
+  t=t.trim();if(!t)return null;
+  var out=[t];
+  if(QF.syn)for(var i=0;i<SYN.length;i++){var g=SYN[i],hit=false,j;
+    for(j=0;j<g.length;j++)if(g[j].indexOf(t)>=0||t.indexOf(g[j])>=0){hit=true;break;}
+    if(hit)for(j=0;j<g.length;j++)if(out.indexOf(g[j])<0)out.push(g[j]);}
+  return out;
+}
+function buildHay(){
+  if(HAY)return;HAY=new Array(N);
+  for(var i=0;i<N;i++){var r=R[i],j=JJ[i],w=WK[i],b=BD[i],g=GZ[i];
+    HAY[i]=r[NAME]+r[ADDR]+r[DEITY]+(j?(j.sd||"")+(j.memo||""):"")+(w?w.t:"")+(b?b.t:"")+
+      (g?(g.kj||"")+(g.kw?g.kw.join(""):""):"");}
+}
+function activeQueries(){
+  qact=[];
+  for(var i=0;i<QS.length&&i<5;i++){var e=expand(QS[i].t);if(e)qact.push({bit:1<<i,i:i,terms:e});}
+  if(qact.length&&QF.scope==="all")buildHay();
+}
+function bitsOf(m){var a=[];for(var k=0;k<5;k++)if(m&(1<<k))a.push(k);return a;}
+function pieDot(x,y,r,bs){
+  if(bs.length===1){ctx.fillStyle=QC[bs[0]];ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.fill();}
+  else{var a=-Math.PI/2,st=6.2831853/bs.length;
+    for(var t=0;t<bs.length;t++){ctx.fillStyle=QC[bs[t]];ctx.beginPath();ctx.moveTo(x,y);
+      ctx.arc(x,y,r,a,a+st);ctx.closePath();ctx.fill();a+=st;}}
+  if(r>=3){ctx.strokeStyle=bs.length>1?"rgba(255,255,255,.95)":"rgba(255,255,255,.6)";
+    ctx.lineWidth=bs.length>1?1.3:0.8;ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.stroke();}
+}
+
+/* ── 描画 ─────────────────────────────── */
+function draw(){
+  if(!N)return;
+  var b=map.getSize();ctx.clearRect(0,0,b.x,b.y);
+  var z=map.getZoom(),rad=z<7?1.1:(z<10?1.8:(z<13?2.8:4));
+  var bn=map.getBounds(),s=bn.getSouth(),n=bn.getNorth(),w=bn.getWest(),e=bn.getEast(),pad=(n-s)*0.05;
+  var nomap=!map.hasLayer(lastBase)||map.hasLayer(NONE);
+  function pass(i){if(!vis[i])return false;var la=R[i][LAT],ln=R[i][LNG];
+    return la>=s-pad&&la<=n+pad&&ln>=w-pad&&ln<=e+pad;}
+  var i,p,hasQ=qact.length>0;
+  ctx.globalAlpha=hasQ?0.30:(nomap?(z<8?0.8:0.92):(z<8?0.66:0.88));
+  ctx.fillStyle=hasQ?'#98958C':'#B23A2E';
+  for(i=0;i<N;i++){if(!pass(i)||R[i][TEMPLE]||OV[i]||(hasQ&&qmask[i]))continue;
+    p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);ctx.fillRect(p.x-rad,p.y-rad,rad*2,rad*2);}
+  ctx.fillStyle=hasQ?'#A9A69C':'#4C6076';
+  for(i=0;i<N;i++){if(!pass(i)||!R[i][TEMPLE]||OV[i]||(hasQ&&qmask[i]))continue;
+    p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);ctx.fillRect(p.x-rad,p.y-rad,rad*2,rad*2);}
+  ctx.globalAlpha=1;
+  if(!hasQ){
+    ctx.fillStyle='#9A7B33';
+    for(i=0;i<N;i++){if(!pass(i)||!OV[i])continue;
+      p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+      ctx.beginPath();ctx.arc(p.x,p.y,Math.max(3,rad+1.6),0,6.2832);ctx.fill();}
+  }else{
+    var one=Math.max(2.2,rad+0.9),many=Math.max(4.2,rad+2.4),later=[];
+    for(i=0;i<N;i++){if(!pass(i)||!qmask[i])continue;
+      var bs=bitsOf(qmask[i]);p=map.latLngToContainerPoint([R[i][LAT],R[i][LNG]]);
+      if(bs.length>1){later.push([p.x,p.y,bs]);continue;}
+      pieDot(p.x,p.y,one,bs);}
+    for(i=0;i<later.length;i++)pieDot(later[i][0],later[i][1],many,later[i][2]);
+  }
+  if(sel>=0){
+    var ps=map.latLngToContainerPoint([R[sel][LAT],R[sel][LNG]]);
+    ctx.strokeStyle='#B23A2E';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(ps.x,ps.y,9,0,6.2832);ctx.stroke();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.beginPath();ctx.arc(ps.x,ps.y,11,0,6.2832);ctx.stroke();
+  }
+}
+map.on('move zoom viewreset',draw);
+map.on('resize',function(){size();draw();});
+
+function pick(e){
+  var m=e.containerPoint,best=-1,bd=400,bn=map.getBounds();
+  for(var i=0;i<N;i++){if(!vis[i])continue;var la=R[i][LAT],ln=R[i][LNG];
+    if(la<bn.getSouth()||la>bn.getNorth()||ln<bn.getWest()||ln>bn.getEast())continue;
+    var p=map.latLngToContainerPoint([la,ln]),dx=p.x-m.x,dy=p.y-m.y,d2=dx*dx+dy*dy;
+    if(d2<bd){bd=d2;best=i;}}
+  return best;
+}
+map.on('click',function(e){
+  if(picking){picking=false;$('nclick').classList.remove('on');hint(null);
+    setOrigin(e.latlng.lat,e.latlng.lng,"地図で押した地点");return;}
+  var i=pick(e);if(i>=0)show(i);
+});
+function hint(t){var h=$('hint');if(t){h.textContent=t;h.classList.remove('off');}else h.classList.add('off');}
+
+/* ── 詳細 ─────────────────────────────── */
+function monTxt(m){return (m&&m.length)?m.map(function(x){return x+"月";}).join("・"):"";}
+function linksFor(i){
+  var r=R[i],j=JJ[i],g=GZ[i],w=WK[i],lk=[];
+  if(g)lk.push('<a class="sl g" href="https://dl.ndl.go.jp/pid/'+g.p+'/1/'+g.k+'" target="_blank" rel="noopener" title="'+
+    esc(VOLS[g.v]||"")+' 第'+g.k+'コマ'+(g.c==="B"?'（同名の別社の可能性あり）':'')+'">NDL'+(g.c==="B"?'?':'')+' ↗</a>');
+  if(j&&j.sd&&r[URL])lk.push('<a class="sl j" href="'+esc(r[URL])+'" target="_blank" rel="noopener">神社庁 ↗</a>');
+  if(w)lk.push('<a class="sl" href="https://ja.wikipedia.org/wiki/'+encodeURIComponent(w.n)+'" target="_blank" rel="noopener">Wikipedia ↗</a>');
+  if(r[OFF])lk.push('<a class="sl" href="'+esc(r[OFF])+'" target="_blank" rel="noopener">公式 ↗</a>');
+  return lk;
+}
+function chBox(k){
+  var c=CH[k],f=[];
+  var loc=[c.ku,c.gu?c.gu+"郡":"",c.pl].filter(Boolean).join(" ");
+  if(loc)f.push(["所在",esc(loc)]);
+  if(c.rk||c.si)f.push(["社格",esc(c.rk||"")+(c.si?(c.rk?"・":"")+"式内":"")]);
+  if(c.sj&&c.sj.length)f.push(["祭神",esc(c.sj.join("・")).replace(/(饒速日|櫛玉|天火明)/g,'<span class="nigi">$1</span>')]);
+  if(c.dp)f.push(["底本",esc(c.dp)]);
+  if(c.no)f.push(["注記",esc(c.no)]);
+  if(c.cl&&c.cl.length)f.push(["氏族",esc(c.cl.join("・"))]);
+  if(c.kj)f.push(["勧請",esc(c.kj)]);
+  if(c.st)f.push(["神体",esc(c.st)]);
+  if(c.sz&&c.sz.length)f.push(["規模・社領",esc(c.sz.join("・"))]);
+  if(c.de)f.push(["社殿",esc(c.de)]);
+  if(c.ci&&c.ci.length)f.push(["引く書",esc(c.ci.join("・"))]);
+  return '<div class="chb"><div class="cht"><b>'+esc(c.ti||"")+'</b>'+(c.yr?'（'+c.yr+'）':'')+
+    (c.ly?'<span class="ly">'+esc(c.ly)+'</span>':'')+'</div>'+
+    '<dl>'+f.map(function(x){return '<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>';}).join('')+'</dl>'+
+    (c.url?'<div class="meta"><a class="lk" href="'+esc(c.url)+'" target="_blank" rel="noopener">NDL の原本 ↗</a></div>':'')+'</div>';
+}
+function openPanel(html){
+  var el=$('panel');
+  el.innerHTML='<button class="cls" id="cls" type="button">閉じる ✕</button>'+html;
+  el.classList.add('on');el.scrollTop=0;
+  $('cls').onclick=closePanel;
+  hint(null);
+}
+function closePanel(){$('panel').classList.remove('on');sel=-1;draw();markSel();}
+function show(i){
+  sel=i;draw();markSel();
+  var r=R[i],j=JJ[i],g=GZ[i],w=WK[i],b=BD[i],o=OV[i],f=[];
+  var rank=RANK[i];
+  if(rank||SHIKI[i])f.push(["社格",(rank?'<span class="rk">'+esc(rank)+'</span>':'')+(SHIKI[i]?'<span class="rk sk">式内</span>':'')]);
+  f.push(["所在地",esc(P[r[PREF]])+" "+esc(r[ADDR]||"")+(KM&&O.lat!==null?' <span class="dash">／ 地点から '+KM[i].toFixed(1)+' km</span>':'')]);
+  f.push(["祭神",r[DEITY]?esc(r[DEITY]).replace(/(饒速日|櫛玉|天火明)/g,'<span class="nigi">$1</span>'):'<span class="dash">記載なし</span>']);
+  var fs=r[FEST]||[];
+  if(fs.length){
+    f.push(["例祭",fs.map(function(x){var o=nextOccurrence(fo(x));
+      return '<div class="fest"><span class="fn">'+esc(x[1]||"例祭")+'</span><span class="fd">'+esc(x[0]||(x[2]?x[2]+"月":""))+
+        '</span>'+(o?'<span class="dash">次回 '+when(o)+'</span> '+badge({o:o}):'')+'</div>';}).join('')]);
+  }else f.push(["例祭",(r[FDATE]||monTxt(r[MONS]))?esc(r[FDATE]||monTxt(r[MONS])):'<span class="dash">記載なし</span>']);
+  if(b)f.push(["社伝 ／ 現地の由緒板",'<div class="txt b">'+esc(b.t)+'</div>'+(b.at?'<div class="meta">翻刻 '+esc(b.at)+'</div>':'')]);
+  if(j&&j.sd)f.push(["社伝 ／ 神社庁（現在）",'<div class="txt">'+esc(j.sd)+'</div>'+
+    (r[URL]?'<div class="meta"><a class="lk" href="'+esc(r[URL])+'" target="_blank" rel="noopener">神社庁の元頁 ↗</a></div>':'')]);
+  if(g){var gu="https://dl.ndl.go.jp/pid/"+g.p+"/1/"+g.k;
+    f.push(["社伝 ／ 戦前の地誌"+(g.c==="A"?"":"（参考）"),
+      '<div class="txt g"><b>'+esc(VOLS[g.v]||"")+'</b> 第'+g.k+'コマ'+
+      (g.r?' ／ 社格 <b>'+esc(g.r)+'</b>':'')+
+      (g.kj?'<br>勧請元 <b>'+esc(g.kj)+'</b>':'')+
+      (g.e&&g.e.length?'<br>年号 '+esc(g.e.join("・")):'')+
+      (g.kw&&g.kw.length?'<br>'+g.kw.map(function(x){return '<span class="kw">'+esc(x)+'</span>';}).join(''):'')+
+      '</div><div class="meta">'+(g.c==="A"?"郡・町村・大字まで一致。確度は高い。":"社名のみ一致。<b>同名の別社の可能性がある</b>。")+
+      ' <a class="lk" href="'+gu+'" target="_blank" rel="noopener">NDL の原本 ↗</a></div>']);}
+  if(w)f.push(["社伝 ／ Wikipedia",'<div class="txt w">'+esc(w.t)+'</div><div class="meta">CC BY-SA 4.0 ／ '+
+    '<a class="lk" href="https://ja.wikipedia.org/wiki/'+encodeURIComponent(w.n)+'" target="_blank" rel="noopener">'+esc(w.n)+' ↗</a></div>']);
+  var cb=CHBY[i];
+  if(cb&&cb.length)f.push(["饒速日鎮座録（"+cb.length+"件）",cb.map(chBox).join('')]);
+  else if(o&&o.note)f.push(["饒速日研究",'<div class="txt g">'+esc(o.note)+'</div>']);
+  if(j&&j.memo)f.push(["メモ",'<div class="txt">'+esc(j.memo)+'</div>']);
+  var lk=[];
+  if(r[OFF])lk.push('<a class="lk" href="'+esc(r[OFF])+'" target="_blank" rel="noopener">公式サイト ↗</a>');
+  if(r[URL])lk.push('<a class="lk" href="'+esc(r[URL])+'" target="_blank" rel="noopener">データの元頁 ↗</a>');
+  f.push(["出典",esc(S[r[SRC]])+(lk.length?' '+lk.join(' '):'')]);
+  f.push(["座標",'<span style="font-family:var(--f-m);font-size:12px">'+r[LAT].toFixed(5)+", "+r[LNG].toFixed(5)+'</span>']);
+  openPanel('<h2>'+esc(r[NAME])+'</h2><p class="sub">'+esc(P[r[PREF]])+(r[TEMPLE]?' ／ 寺院':' ／ 神社')+
+    ((j&&j.yomi)?' ／ '+esc(j.yomi):'')+'</p>'+
+    f.map(function(x){return '<dl class="fld"><dt>'+x[0]+'</dt><dd>'+x[1]+'</dd></dl>';}).join(''));
+}
+function showCh(k){
+  var c=CH[k];sel=-1;draw();
+  openPanel('<h2>'+esc(c.n)+'</h2><p class="sub">饒速日鎮座録 ／ <span class="dash">現存の社と結び付かず、地図には載らない</span></p>'+chBox(k));
+}
+
+/* ── 絞り込み ─────────────────────────── */
+function sdOk(i){
+  var j=JJ[i];
+  switch(F.sd){
+    case "any":return !!((j&&j.sd)||GZ[i]||WK[i]||BD[i]);
+    case "j":return !!(j&&j.sd);
+    case "g":return !!GZ[i];
+    case "ga":return !!(GZ[i]&&GZ[i].c==="A");
+    case "w":return !!WK[i];
+    case "b":return !!BD[i];
+  }
+  return true;
+}
+function festOk(i,mon){
+  var fs=R[i][FEST];if(!fs||!fs.length)return false;
+  if(!F.r1&&!mon)return true;
+  for(var k=0;k<fs.length;k++){var f=fo(fs[k]);
+    if(F.r1){if(findRangeOccurrence(f,F.r1,F.r2))return true;}
+    else if(festivalMatchesMonth(f,mon))return true;}
+  return false;
+}
+function apply(){
+  var q=F.q.trim()?norm(F.q.trim()):"";
+  if(q)buildHays();
+  activeQueries();
+  qcnt=[0,0,0,0,0];qov=0;
+  var mon=F.mon===-1?TM:F.mon,fest=!!(F.r1||mon||F.has),hasO=O.lat!==null&&O.rad>0,n=0;
+  for(var i=0;i<N;i++){
+    var r=R[i],ok=1;
+    if(F.pref>=0&&r[PREF]!==F.pref)ok=0;
+    else if(F.src>=0&&r[SRC]!==F.src)ok=0;
+    else if(F.kind==="s"&&r[TEMPLE])ok=0;
+    else if(F.kind==="t"&&!r[TEMPLE])ok=0;
+    else if(F.d&&!r[DEITY])ok=0;
+    else if(F.r&&!OV[i])ok=0;
+    else if(F.b&&!BD[i])ok=0;
+    else if(F.sk&&!SHIKI[i])ok=0;
+    else if(F.rank&&RANK[i]!==F.rank)ok=0;
+    else if(F.sd&&!sdOk(i))ok=0;
+    else if(hasO&&KM[i]>O.rad)ok=0;
+    else if(q&&HAYS[i].indexOf(q)<0)ok=0;
+    else if(fest&&!festOk(i,mon))ok=0;
+    var m=0;
+    if(ok&&qact.length){
+      var hay=QF.scope==="all"?HAY[i]:(r[DEITY]||"");
+      for(var t=0;t<qact.length;t++){var tm=qact[t].terms;
+        for(var u=0;u<tm.length;u++)if(hay.indexOf(tm[u])>=0){m|=qact[t].bit;break;}}
+      if(m){var nb=0;for(var k=0;k<5;k++)if(m&(1<<k)){qcnt[k]++;nb++;}if(nb>1)qov++;}
+      if(QF.only&&!m)ok=0;
+      if(QF.both&&!(m&&(m&(m-1))))ok=0;
+    }
+    qmask[i]=m;vis[i]=ok;n+=ok;
+  }
+  visN=n;
+  $('cnt').innerHTML='<b>'+n.toLocaleString()+'</b> / '+N.toLocaleString()+' 社';
+  // 条件の掛かっている欄のボタンに印を付ける
+  $('b-filter').classList.toggle('on',!!(F.sd||F.rank||F.src>=0||F.kind||F.d||F.sk||F.b||F.r));
+  $('b-fest').classList.toggle('on',fest);
+  $('b-near').classList.toggle('on',O.lat!==null);
+  qstat();legend();draw();
+  if(q&&n<=400&&!autoOpened&&$('drawer').hidden){autoOpened=true;openDrawer("s");}
+  if(!q)autoOpened=false;
+  refreshList(true);
+}
+
+/* ── 近く ─────────────────────────────── */
+var oMark=null,oCirc=null;
+function haversine(a,b,c,d){var dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180,
+  x=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)*Math.sin(dG/2);
+  return 12742*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function setOrigin(la,ln,label){
+  O.lat=la;O.lng=ln;O.label=label;
+  KM=KM||new Float32Array(N);
+  for(var i=0;i<N;i++)KM[i]=haversine(la,ln,R[i][LAT],R[i][LNG]);
+  drawOrigin();
+  var z={5:12,10:11,20:10,50:9}[O.rad];
+  map.setView([la,ln],z||map.getZoom());
+  if(!$('sort').value)$('sort').value="rec";
+  $('nstat').innerHTML=esc(label)+'<br>'+la.toFixed(4)+', '+ln.toFixed(4);
+  apply();openDrawer("s");
+}
+function drawOrigin(){
+  if(oMark)map.removeLayer(oMark);if(oCirc)map.removeLayer(oCirc);oMark=oCirc=null;
+  if(O.lat===null)return;
+  if(O.rad>0)oCirc=L.circle([O.lat,O.lng],{radius:O.rad*1000,color:'#9A7B33',weight:1.5,
+    fillColor:'#9A7B33',fillOpacity:0.05,dashArray:'4 4',interactive:false}).addTo(map);
+  oMark=L.circleMarker([O.lat,O.lng],{radius:7,color:'#fff',weight:2,fillColor:'#9A7B33',fillOpacity:1,interactive:false}).addTo(map);
+}
+$('ngps').onclick=function(){
+  if(!navigator.geolocation){$('nstat').textContent='この端末では現在地を取れない';return;}
+  $('nstat').textContent='現在地を取得しています…';
+  navigator.geolocation.getCurrentPosition(function(p){setOrigin(p.coords.latitude,p.coords.longitude,"現在地");},
+    function(e){$('nstat').textContent='現在地を取れなかった（'+e.message+'）。地図を押して決めてください。';},
+    {enableHighAccuracy:false,timeout:10000,maximumAge:300000});
+};
+$('nclick').onclick=function(){
+  picking=!picking;this.classList.toggle('on',picking);
+  hint(picking?'地図を押して地点を決める':null);
+};
+$('nrad').onchange=function(e){O.rad=+e.target.value;drawOrigin();if(O.lat!==null)apply();};
+$('nreset').onclick=function(){
+  O.lat=O.lng=null;drawOrigin();$('nstat').textContent='地点はまだ決めていない';
+  if($('sort').value==="rec"||$('sort').value==="near")$('sort').value="";
+  apply();
+};
+
+/* ── 一覧 ─────────────────────────────── */
+function openDrawer(tab){
+  $('drawer').hidden=false;$('b-list').classList.add('on');
+  if(tab)setTab(tab);else refreshList(true);
+}
+$('b-list').onclick=function(){if($('drawer').hidden)openDrawer();else closeDrawer();};
+function closeDrawer(){$('drawer').hidden=true;$('b-list').classList.remove('on');}
+$('dclose').onclick=closeDrawer;
+function setTab(t){
+  TAB=t;
+  [].forEach.call(document.querySelectorAll('.tab'),function(b){b.classList.toggle('on',b.getAttribute('data-tab')===t);});
+  $('ctl-s').hidden=t!=="s";$('ctl-c').hidden=t!=="c";
+  refreshList(true);
+}
+[].forEach.call(document.querySelectorAll('.tab'),function(b){b.onclick=function(){setTab(b.getAttribute('data-tab'));};});
+
+function sortKey(mode){
+  var big=1e9;
+  if(mode==="near")return function(i){return KM?KM[i]:0;};
+  if(mode==="date"||mode==="rec"){
+    var slow=!!(F.r1||F.mon);   // 条件付きのときは都度計算する
+    return function(i){
+      var d=slow?(function(){var fi=festInfo(i);return fi?fi.key:-1;})():NEXT[i];
+      var base=d<0?big:d;
+      return mode==="rec"?base+(KM&&O.lat!==null?KM[i]*0.5:0):base;
+    };
+  }
+  return null;
+}
+function buildList(){
+  var out=[],inview=$('inview').checked,bn=inview?map.getBounds():null;
+  for(var i=0;i<N;i++){if(!vis[i])continue;
+    if(bn){var la=R[i][LAT],ln=R[i][LNG];
+      if(la<bn.getSouth()||la>bn.getNorth()||ln<bn.getWest()||ln>bn.getEast())continue;}
+    out.push(i);}
+  var f=sortKey($('sort').value);
+  if(f){var key={};out.forEach(function(i){key[i]=f(i);});out.sort(function(a,b){return key[a]-key[b]||a-b;});}
+  return out;
+}
+function chList(){
+  var q=F.q.trim()?norm(F.q.trim()):"",out=[];
+  for(var k=0;k<CH.length;k++){var c=CH[k];
+    if(CF.ly&&c.ly!==CF.ly)continue;
+    if(CF.dp&&c.dp!==CF.dp)continue;
+    if(CF.rk&&c.rk!==CF.rk)continue;
+    if(CF.si&&!c.si)continue;
+    if(CF.de&&!c.de)continue;
+    if(CF.at&&!c.at.length)continue;
+    if(q){var h=norm([c.n,c.ku,c.gu,c.pl,c.ti,c.no,(c.sj||[]).join(" "),(c.cl||[]).join(" ")].join(" "));
+      if(h.indexOf(q)<0)continue;}
+    out.push(k);}
+  return out;
+}
+function rowS(i){
+  var r=R[i],o=OV[i],j=JJ[i],g=GZ[i],w=WK[i],b=BD[i];
+  var de=r[DEITY]?esc(r[DEITY]).replace(/(饒速日|櫛玉|天火明)/g,'<em>$1</em>'):'<span class="dash">—</span>';
+  var rankH=RANK[i]?'<span class="rk">'+esc(RANK[i])+'</span>':'<span class="dash">—</span>';
+  if(SHIKI[i])rankH+='<span class="rk sk">式内</span>';
+  var sd=(j&&j.sd)||"",sdH;
+  if(b)sdH='<span class="bdg">由緒板</span><span class="sdt">'+esc(b.t.slice(0,60))+'…</span>';
+  else if(sd)sdH='<span class="bdg j">神社庁</span><span class="sdt">'+esc(sd.slice(0,60))+(sd.length>60?'…':'')+'</span>';
+  else if(g)sdH='<span class="bdg g'+(g.c==="B"?" b2":"")+'">'+(g.c==="A"?"地誌":"地誌?")+'</span><span class="sdt gz">'+
+    esc(VOLS[g.v]||"")+(g.kj?' ／ 勧請元 '+esc(g.kj):'')+(g.kw&&g.kw.length?' ／ '+esc(g.kw.slice(0,3).join("・")):'')+'</span>';
+  else if(w)sdH='<span class="bdg w">Wiki</span><span class="sdt">'+esc(w.t.slice(0,60))+'…</span>';
+  else if(o&&o.note)sdH='<span class="sdt" style="color:var(--kin)">'+esc(o.note.slice(0,60))+'</span>';
+  else sdH='<span class="dash">—</span>';
+  var lk=linksFor(i);if(lk.length)sdH+='<span class="sls">'+lk.join('')+'</span>';
+  var fi=festInfo(i),fe;
+  if(fi)fe=esc(fi.f[1]||"例祭")+' <span class="dash">'+esc((fi.f[0]||"").slice(0,24))+'</span><br>'+
+    '<span class="dash">'+when(fi.o)+'</span> '+badge(fi);
+  else if((r[FEST]||[]).length)fe='<span class="dash">'+esc((r[FEST][0][0]||"").slice(0,30))+'</span>';
+  else fe='<span class="dash">—</span>';
+  return '<tr class="'+(o?"hit":"")+(i===sel?" sel":"")+'" data-i="'+i+'">'+
+    '<td class="n">'+esc(r[NAME])+(r[TEMPLE]?'<span class="t">寺</span>':'')+(j&&j.yomi?'<span class="ym">'+esc(j.yomi)+'</span>':'')+'</td>'+
+    '<td class="ad"><b>'+esc(P[r[PREF]])+'</b><br>'+esc(r[ADDR]||"")+'</td>'+
+    '<td>'+rankH+'</td><td class="de">'+de+'</td><td class="rs">'+sdH+'</td><td class="fe">'+fe+'</td>'+
+    (O.lat!==null?'<td class="km">'+KM[i].toFixed(1)+' km</td>':'')+'</tr>';
+}
+function rowC(k){
+  var c=CH[k];
+  var loc=[c.ku,c.gu?c.gu+"郡":"",c.pl].filter(Boolean).join(" ");
+  return '<tr class="'+(c.at.length?"hit":"")+'" data-c="'+k+'">'+
+    '<td class="n">'+esc(c.n)+'</td>'+
+    '<td class="ad">'+(loc?esc(loc):'<span class="dash">—</span>')+'</td>'+
+    '<td>'+(c.rk?'<span class="rk">'+esc(c.rk)+'</span>':'<span class="dash">—</span>')+(c.si?'<span class="rk sk">式内</span>':'')+'</td>'+
+    '<td class="de">'+(c.sj&&c.sj.length?esc(c.sj.join("・")).replace(/(饒速日|櫛玉|天火明)/g,'<em>$1</em>'):'<span class="dash">—</span>')+'</td>'+
+    '<td class="rs"><span class="sdt">'+esc(c.ti||"")+(c.yr?'（'+c.yr+'）':'')+'</span>'+
+      (c.ly?' <span class="dash">'+esc(c.ly)+'</span>':'')+
+      '<span class="sls">'+(c.url?'<a class="sl g" href="'+esc(c.url)+'" target="_blank" rel="noopener">NDL ↗</a>':'')+
+      (c.at.length?'<span class="chip on">地図</span>':'<span class="chip">地図になし</span>')+'</span></td>'+
+    '<td>'+(c.dp?'<span class="chip">'+esc(c.dp)+'</span>':'<span class="dash">—</span>')+'</td>'+
+    '<td class="rs"><span class="sdt">'+esc((c.no||"").slice(0,80))+'</span></td></tr>';
+}
+function refreshList(reset){
+  if($('drawer').hidden){updateTabCounts();return;}
+  var th=$('th');
+  if(TAB==="s"){
+    th.innerHTML='<tr><th>社名</th><th>所在地</th><th>社格</th><th>祭神</th><th>社伝（由緒）</th><th>例祭（次回）</th>'+
+      (O.lat!==null?'<th>距離</th>':'')+'</tr>';
+    if(reset){LIST=buildList();shown=0;$('tb').innerHTML="";}
+  }else{
+    th.innerHTML='<tr><th>社名</th><th>国・郡・所在</th><th>社格</th><th>祭神</th><th>典拠（層）</th><th>底本</th><th>注記</th></tr>';
+    if(reset){LIST=chList();shown=0;$('tb').innerHTML="";}
+  }
+  var html="",end=Math.min(LIST.length,shown+PAGE);
+  for(var x=shown;x<end;x++)html+=TAB==="s"?rowS(LIST[x]):rowC(LIST[x]);
+  $('tb').insertAdjacentHTML("beforeend",html);shown=end;
+  $('empty').hidden=LIST.length>0;
+  var more=$('more');
+  if(shown<LIST.length){more.hidden=false;more.textContent="さらに表示（残り "+(LIST.length-shown).toLocaleString()+" 件）";}
+  else more.hidden=true;
+  if(reset)$('dbody').scrollTop=0;
+  updateTabCounts();
+}
+function updateTabCounts(){
+  if(TAB==="s"&&!$('drawer').hidden)$('t-s').textContent=LIST.length.toLocaleString();
+  else $('t-s').textContent=visN.toLocaleString();
+  $('t-c').textContent=(TAB==="c"&&!$('drawer').hidden?LIST.length:CH.length).toLocaleString();
+  $('b-list').innerHTML='一覧 <b>'+visN.toLocaleString()+'</b>';
+}
+$('more').onclick=function(){refreshList(false);};
+$('tb').addEventListener('click',function(e){
+  if(e.target.closest('a'))return;
+  var tr=e.target.closest('tr');if(!tr)return;
+  if(tr.hasAttribute('data-i')){var i=+tr.getAttribute('data-i');
+    map.setView([R[i][LAT],R[i][LNG]],Math.max(map.getZoom(),14));show(i);}
+  else if(tr.hasAttribute('data-c')){var k=+tr.getAttribute('data-c'),c=CH[k];
+    if(c.at.length){var a=c.at[0];map.setView([R[a][LAT],R[a][LNG]],Math.max(map.getZoom(),14));show(a);}
+    else showCh(k);}
+});
+function markSel(){
+  [].forEach.call(document.querySelectorAll('#tb tr.sel'),function(t){t.classList.remove('sel');});
+  if(sel>=0){var t=document.querySelector('#tb tr[data-i="'+sel+'"]');if(t)t.classList.add('sel');}
+}
+$('sort').onchange=function(){refreshList(true);};
+$('inview').onchange=function(){refreshList(true);};
+var mvT=null;
+map.on('moveend',function(){if(!$('inview').checked||$('drawer').hidden||TAB!=="s")return;
+  clearTimeout(mvT);mvT=setTimeout(function(){refreshList(true);},220);});
+["c-ly","c-dp","c-rk"].forEach(function(id){$(id).onchange=function(e){CF[id.slice(2)]=e.target.value;refreshList(true);};});
+["c-si","c-de","c-at"].forEach(function(id){$(id).onchange=function(e){CF[id.slice(2)]=e.target.checked;refreshList(true);};});
+
+/* ── 凡例 ─────────────────────────────── */
+function legend(){
+  var h;
+  if(!qact.length){
+    h='<span><i style="background:#B23A2E;border-radius:1px"></i>神社</span>'+
+      '<span><i style="background:#4C6076;border-radius:1px"></i>寺院</span>'+
+      '<span><i style="background:#9A7B33"></i>饒速日関係</span>';
+  }else{
+    h=qact.map(function(a){return '<span><i style="background:'+QC[a.i]+'"></i>'+esc(QS[a.i].t.trim())+'</span>';}).join('')+
+      (qact.length>1?'<span><i style="background:linear-gradient(90deg,'+QC[qact[0].i]+' 50%,'+QC[qact[1].i]+' 50%)"></i>両方</span>':'')+
+      '<span><i style="background:#98958C"></i>当たらず</span>';
+  }
+  if(O.lat!==null)h+='<span><i style="background:#9A7B33;box-shadow:0 0 0 2px #fff inset"></i>'+esc(O.label)+'</span>';
+  $('lgd').innerHTML=h;
+}
+
+/* ── くらべる の UI ────────────────────── */
+var QROWS=$('qrows');
+function qrender(){
+  var h='';
+  for(var i=0;i<QS.length;i++){
+    h+='<div class="qrow"><span class="sw" style="background:'+QC[i]+'" title="'+QN[i]+'"></span>'+
+       '<input type="text" data-i="'+i+'" value="'+esc(QS[i].t)+'" placeholder="'+
+       (i===0?'例 大国主':(i===1?'例 素戔嗚':'語を入れる'))+'" aria-label="'+QN[i]+'の語">'+
+       '<span class="qn" data-n="'+i+'"></span>'+
+       (QS.length>1?'<button class="qdel" data-d="'+i+'" type="button" title="この行を消す">&#10005;</button>':'')+'</div>';
+  }
+  QROWS.innerHTML=h;$('qadd').hidden=QS.length>=5;qstat();
+}
+function qstat(){
+  var ns=QROWS.querySelectorAll('.qn');
+  for(var i=0;i<ns.length;i++){var k=+ns[i].getAttribute('data-n'),on=qact.some(function(a){return a.i===k;});
+    ns[i].textContent=on?qcnt[k].toLocaleString():'';ns[i].style.color=on?QC[k]:'';}
+  var el=$('qov');
+  if(!qact.length)el.innerHTML='';
+  else{var ex=0;qact.forEach(function(a){if(a.terms.length>ex)ex=a.terms.length;});
+    el.innerHTML=qact.map(function(a){return '<b style="color:'+QC[a.i]+'">'+esc(QS[a.i].t.trim())+'</b> '+qcnt[a.i].toLocaleString()+' 社';}).join('　')+
+      (qact.length>1?'<br>うち重なり <b>'+qov.toLocaleString()+'</b> 社':'')+
+      (QF.syn&&ex>1?'<br><span style="color:var(--faint)">異名を展開して当てている</span>':'');}
+  $('b-comp').classList.toggle('on',qact.length>0);
+}
+QROWS.addEventListener('input',function(e){var t=e.target;if(!t.hasAttribute('data-i'))return;
+  QS[+t.getAttribute('data-i')].t=t.value;apply();});
+QROWS.addEventListener('click',function(e){var b=e.target.closest('button[data-d]');if(!b)return;
+  QS.splice(+b.getAttribute('data-d'),1);if(!QS.length)QS=[{t:""}];qrender();apply();});
+$('qadd').onclick=function(){if(QS.length<5){QS.push({t:""});qrender();}};
+$('qscope').onchange=function(e){QF.scope=e.target.value;apply();};
+$('qsyn').onchange=function(e){QF.syn=e.target.checked;apply();};
+$('qonly').onchange=function(e){QF.only=e.target.checked;apply();};
+$('qboth').onchange=function(e){QF.both=e.target.checked;apply();};
+
+/* ── 開く欄の開け閉め ─────────────────── */
+var POPS=["pop-filter","pop-fest","pop-near","qpanel"];
+function openPop(id){
+  POPS.forEach(function(p){var on=p===id&&$(p).hidden;$(p).hidden=!on;
+    var b=document.querySelector('.pb[data-pop="'+p+'"]');if(b)b.classList.toggle('open',on);});
+  if(id&&!$(id).hidden){var f=$(id).querySelector('input[type=text],select');if(f&&id==="qpanel")f.focus();}
+}
+[].forEach.call(document.querySelectorAll('.pb[data-pop]'),function(b){b.onclick=function(){openPop(b.getAttribute('data-pop'));};});
+[].forEach.call(document.querySelectorAll('.pclose'),function(b){b.onclick=function(){openPop(null);};});
+document.addEventListener('keydown',function(e){
+  if(e.key!=="Escape")return;
+  if(picking){picking=false;$('nclick').classList.remove('on');hint(null);return;}
+  if(POPS.some(function(p){return !$(p).hidden;})){openPop(null);return;}
+  if($('panel').classList.contains('on')){closePanel();return;}
+});
+
+/* ── 条件の配線 ───────────────────────── */
+$('q').oninput=function(e){F.q=e.target.value;apply();};
+$('pref').onchange=function(e){
+  F.pref=e.target.value===''?-1:+e.target.value;
+  if(F.pref>=0){var la=0,ln=0,n=0;
+    for(var i=0;i<N;i++)if(R[i][PREF]===F.pref){la+=R[i][LAT];ln+=R[i][LNG];n++;}
+    if(n)map.setView([la/n,ln/n],9);}
+  apply();
+};
+$('sd').onchange=function(e){F.sd=e.target.value;apply();};
+$('rank').onchange=function(e){F.rank=e.target.value;apply();};
+$('kind').onchange=function(e){F.kind=e.target.value;apply();};
+$('src').onchange=function(e){F.src=e.target.value===''?-1:+e.target.value;apply();};
+$('fd').onchange=function(e){F.d=e.target.checked;apply();};
+$('fsk').onchange=function(e){F.sk=e.target.checked;apply();};
+$('fb').onchange=function(e){F.b=e.target.checked;apply();};
+$('fr').onchange=function(e){F.r=e.target.checked;apply();};
+$('freset').onclick=function(){
+  F.sd="";F.rank="";F.src=-1;F.kind="";F.d=F.sk=F.b=F.r=false;
+  ["sd","rank","kind","src"].forEach(function(id){$(id).value="";});
+  ["fd","fsk","fb","fr"].forEach(function(id){$(id).checked=false;});
+  apply();
+};
+function iso(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function readRange(){
+  var a=$('fs1').value,b=$('fs2').value;
+  if(!a||!b){F.r1=F.r2=null;return;}
+  var s=new Date(a+"T00:00:00"),e=new Date(b+"T00:00:00");
+  if(e<s){var t=s;s=e;e=t;}
+  F.r1=s;F.r2=e;
+}
+$('fmon').onchange=function(e){F.mon=+e.target.value;apply();};
+$('fs1').onchange=$('fs2').onchange=function(){readRange();apply();};
+[].forEach.call(document.querySelectorAll('.quick button'),function(b){b.onclick=function(){
+  var e=new Date(TODAY);e.setDate(e.getDate()+(+b.getAttribute('data-days')));
+  $('fs1').value=iso(TODAY);$('fs2').value=iso(e);readRange();
+  if(!$('sort').value)$('sort').value="date";
+  apply();openDrawer("s");};});
+$('fhas').onchange=function(e){F.has=e.target.checked;apply();};
+$('fsreset').onclick=function(){
+  F.mon=0;F.r1=F.r2=null;F.has=false;$('fmon').value="0";$('fs1').value=$('fs2').value="";$('fhas').checked=false;apply();
+};
+
+/* ── 読み込み ─────────────────────────── */
+var RKN={"縣社":"県社","鄕社":"郷社","國幣大社":"国幣大社","國幣中社":"国幣中社","國幣小社":"国幣小社"};
+var RKO=["官幣大社","官幣中社","官幣小社","別格官幣社","国幣大社","国幣中社","国幣小社","別表神社","県社","府社","郷社","村社","無格社"];
+function fillSel(id,items){var s=$(id);items.forEach(function(x){var o=document.createElement('option');
+  o.value=x[0];o.textContent=x[1];s.appendChild(o);});}
+fetch('data/atlas.json').then(function(r){
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  $('loadtxt').textContent='読み込み中… 展開しています';
+  return r.json();
+}).then(function(d){
+  R=d.r;P=d.p;S=d.s;VOLS=d.vols||[];JJ=d.jj||{};GZ=d.gz||{};WK=d.wk||{};BD=d.bd||{};OV=d.ov||{};CH=d.ch||[];
+  N=R.length;vis=new Uint8Array(N).fill(1);visN=N;qmask=new Uint8Array(N);
+  RANK=new Array(N);SHIKI=new Uint8Array(N);NEXT=new Int16Array(N);
+  var rc={},pc={},sc={};
+  for(var i=0;i<N;i++){
+    var j=JJ[i],g=GZ[i],o=OV[i];
+    var rk=(j&&j.sk)||(g&&g.r)||(o&&o.rank)||"";
+    rk=RKN[rk]||rk;RANK[i]=rk;if(rk)rc[rk]=(rc[rk]||0)+1;
+    SHIKI[i]=((j&&j.ik)||(o&&o.sk))?1:0;
+    pc[R[i][PREF]]=(pc[R[i][PREF]]||0)+1;sc[R[i][SRC]]=(sc[R[i][SRC]]||0)+1;
+    var best=-1,fs=R[i][FEST];
+    if(fs)for(var k=0;k<fs.length;k++){var oc=nextOccurrence(fo(fs[k]));
+      if(oc){var n=occKey(oc,TODAY);if(best<0||n<best)best=n;}}
+    NEXT[i]=best;
+  }
+  fillSel('pref',P.map(function(n,ix){return [ix,n+' ('+(pc[ix]||0)+')',pc[ix]||0];}).sort(function(a,b){return b[2]-a[2];}));
+  fillSel('rank',Object.keys(rc).sort(function(a,b){
+    var x=RKO.indexOf(a),y=RKO.indexOf(b);return (x<0?99:x)-(y<0?99:y)||rc[b]-rc[a];}).map(function(k){return [k,k+' ('+rc[k]+')'];}));
+  fillSel('src',S.map(function(n,ix){return [ix,n+' ('+(sc[ix]||0)+')',sc[ix]||0];}).sort(function(a,b){return b[2]-a[2];}));
+  // 鎮座録 ↔ 地図上の点
+  var lys={},dps={},rks={};
+  CH.forEach(function(c,k){c.at=c.at||[];c.at.forEach(function(a){(CHBY[a]=CHBY[a]||[]).push(k);});
+    if(c.ly)lys[c.ly]=(lys[c.ly]||0)+1;if(c.dp)dps[c.dp]=(dps[c.dp]||0)+1;if(c.rk)rks[c.rk]=(rks[c.rk]||0)+1;});
+  function cnt(o){return Object.keys(o).sort(function(a,b){return o[b]-o[a];}).map(function(k){return [k,k+' ('+o[k]+')'];});}
+  fillSel('c-ly',cnt(lys));fillSel('c-dp',cnt(dps));fillSel('c-rk',cnt(rks));
+  $('load').remove();
+  size();qrender();apply();
+  hint('点を押すと社伝が出ます');setTimeout(function(){if(!picking)hint(null);},6000);
+}).catch(function(e){
+  $('load').innerHTML='<div style="text-align:center;line-height:1.9">データを読み込めませんでした<br>'+
+    '<span style="font-size:11px">'+esc(e.message)+'</span><br><a class="lk" href="./">トップへ戻る</a></div>';
+});
+window.addEventListener('resize',function(){size();draw();});
+})();
+</script>
+</body>
+</html>

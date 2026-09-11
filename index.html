@@ -42,6 +42,10 @@ a{color:var(--ai)}
 .card h3{font-family:var(--f-d);font-size:19px;margin:0 0 5px;letter-spacing:.05em}
 .card p{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
 .card.k{border-left-color:var(--kin)}
+.card.main{border-left-width:6px;padding:20px 22px}
+.card.main h3{font-size:24px}
+.card.main p{font-size:14px;color:var(--ink)}
+.older{font-size:12.5px;color:var(--muted);margin:12px 0 0}
 .card.ex{border-left-color:var(--ai);border-style:dashed}
 .card.ex h3:after{content:"↗";font-family:var(--f-m);font-size:13px;margin-left:6px;
   color:var(--ai);vertical-align:2px}
@@ -73,23 +77,15 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
 </header>
 
 <div class="cards">
-  <a class="card" href="map.html">
-    <h3>社伝マップ</h3>
-    <p>地理院タイルの実際の地図に 70,204 社を重ねたもの。地名を見ながら探せる。
-       点を押すと祭神・例祭に加え、神社庁・戦前地誌・Wikipedia・由緒板の社伝が並ぶ。
-       <b>「くらべる」</b>で複数の祭神を色分けして重ね、両方を祀る社を見つけられる。</p>
-  </a>
-  <a class="card" href="tenbyo.html">
-    <h3>社伝点描図</h3>
-    <p>全国 70,393 社を、地図画像を使わず座標の点だけで描いた図。社の分布そのものから
-       国土の輪郭が現れる。点を押すと祭神・例祭・社伝が出る。</p>
-  </a>
-  <a class="card k" href="chinza.html">
-    <h3>饒速日鎮座録</h3>
-    <p>近代の郡誌・神社誌から抽出した饒速日命関係の神社 825 件。令制国別の分布図と
-       社格・祭神・典拠の各欄。</p>
+  <a class="card main" href="atlas.html">
+    <h3>社伝地図</h3>
+    <p>全国 70,204 社を一枚の地図に載せたもの。国土地理院の地図は重ねても外してもよく、
+       外すと社の点だけで国土の輪郭が浮かぶ。社伝・祭神・社格で絞り込み、複数の祭神を色分けして比べ、
+       現在地や地図で押した地点の近くで次に行われる例祭を探せる。饒速日鎮座録 825 件も同じ地図と一覧に入っている。</p>
   </a>
 </div>
+<p class="older">以前の個別の地図（いずれも社伝地図に統合した）:
+  <a href="map.html">社伝マップ</a> ／ <a href="tenbyo.html">社伝点描図</a> ／ <a href="chinza.html">饒速日鎮座録</a></p>
 
 <h2>関連するもの</h2>
 <div class="cards">
@@ -136,7 +132,8 @@ footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);
     <tr><td><code>scrape_shaden.py</code></td><td>各県神社庁サイトから由緒・社格を採る</td></tr>
     <tr><td><code>wiki_shaden.py</code></td><td>Wikipedia の神社記事から由緒節を採る</td></tr>
     <tr><td><code>boards.py</code></td><td>由緒板の写真を取り込み翻刻を溜める</td></tr>
-    <tr><td><code>build_tenbyo.py</code></td><td>地図ページを組み立てる</td></tr>
+    <tr><td><code>build_atlas.py</code></td><td>社伝地図のデータを組み立てる</td></tr>
+    <tr><td><code>build_tenbyo.py</code></td><td>点描図を組み立てる（旧版）</td></tr>
   </tbody>
 </table>
 

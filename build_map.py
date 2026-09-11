@@ -18,7 +18,7 @@ def clean(s, n=None):
     return s[:n] if n else s
 
 
-def main():
+def build():
     rows = json.load(io.open(os.path.join(BASE, "data/shrinemap/data.json"), encoding="utf-8"))
     ov = json.load(io.open(os.path.join(BASE, "data/shrinemap/overlay.json"), encoding="utf-8"))
 
@@ -144,11 +144,17 @@ def main():
     vols = [k for k, _ in sorted(VOLIX.items(), key=lambda x: x[1])]
     payload = {"p": PREFS, "s": SRCS, "vols": vols,
                "r": pts, "jj": JJ, "gz": GZ, "wk": WK, "bd": BDS, "ov": OV}
+    return payload, rows, remap
+
+
+def main():
+    payload, _, _ = build()
     io.open(OUT, "w", encoding="utf-8").write(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     n = os.path.getsize(OUT)
     print("map.json %.2f MB / 点 %d / 神社庁 %d / 地誌 %d / Wikipedia %d / 由緒板 %d / 饒速日 %d"
-          % (n / 1048576, len(pts), len(JJ), len(GZ), len(WK), len(BDS), len(OV)))
+          % (n / 1048576, len(payload["r"]), len(payload["jj"]), len(payload["gz"]),
+             len(payload["wk"]), len(payload["bd"]), len(payload["ov"])))
 
 
 if __name__ == "__main__":
