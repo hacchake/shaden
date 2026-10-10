@@ -1,4 +1,4 @@
-<!-- note投稿用（mescal_全訳.md から生成。表を箇条書きに、斜体記号を除去） -->
+<!-- note投稿用（mescal_全訳.md から生成。表を箇条書きに、斜体記号と作業メモへの参照を除去） -->
 
 # 【全訳】ハヴロック・エリス「メスカル――新しい人工楽園」
 
@@ -54,7 +54,7 @@
 - 「世俗の権力に訴えた（appealed to the secular arm）」：教会が自らの手で罰を下せないとき、国家の権力にゆだねることをいう、教会法に由来する言い回し。
 - 「キオワ族」「ニューメキシコ」：原文の記述に従った。キオワ族の居住地については、当時の記述と現在の知見が一致しない部分がある。
 - 「タラウマラ族（Tarahumari）」：現在の一般的な表記は Tarahumara（自称ララムリ）。原文の綴りを（　）に残した。
-- 「コーパルの香で身を清め（cense themselves with copal incense）」：掲載先の本文では cense が clense となっているが、原本に従い「香を焚いて身を清める」意に取った（作業メモ参照）。
+- 「コーパルの香で身を清め（cense themselves with copal incense）」：掲載先の本文では cense が clense となっているが、原本に従い「香を焚いて身を清める」意に取った。
 - 「ヒコリ（Hikori）」：タラウマラ族がペヨーテを指す呼び名とされる。
 - 「棒でこする音（a rasping noise is made with sticks）」：刻み目をつけた棒をこすって音を出す楽器（ラスプ）を使うことを指すとみられる。
 
@@ -97,7 +97,7 @@
 ### 訳注
 
 - 「感覚が全般に過敏になっており（a general hyperaesthesia of all the senses）」：hyperaesthesia は医学用語で「知覚過敏」。訳文では一般の読者に分かるよう「過敏」とした。
-- 「赤や緑、とりわけすみれ色の色合いを帯びて（heightened by flushes of red, green, and especially violet）」：flush は「さっと差す赤み、色の差し」。原本のOCRの一つでは by が脱落しているが、もう一つの版と掲載先の本文に従って訳した（作業メモ参照）。
+- 「赤や緑、とりわけすみれ色の色合いを帯びて（heightened by flushes of red, green, and especially violet）」：flush は「さっと差す赤み、色の差し」。原本のOCRの一つでは by が脱落しているが、もう一つの版と掲載先の本文に従って訳した。
 - 「視覚の過敏、というよりむしろ視覚の疲労（visual hyperaesthesia, or rather exhaustion）」：過剰な刺激で感覚が鋭くなっている状態を、むしろ疲労の一種と見直している。二つの語の対比が分かるように訳した。
 - 「中国風の（Chinese in character）」：当時の西洋で、異国趣味的な奇抜さを表すのにしばしば用いられた形容。訳文では原文どおり「中国風」とした。
 
@@ -140,7 +140,7 @@
 
 - 「ヘリオトロープ色（heliotrope）」：ヘリオトロープの花のような、赤みがかった薄紫色。
 - 「黒テンの毛皮（sable）」：sable はクロテン、またはその毛皮。紋章学では「黒」を意味する語でもあるが、袖口の縁取りという文脈から毛皮の意に取った。
-- 「ひらめいた（flashed）」：掲載先の本文では dashed となっているが、原本の flashed に従った（作業メモ参照）。
+- 「ひらめいた（flashed）」：掲載先の本文では dashed となっているが、原本の flashed に従った。
 - 「ズボン（my trouser）」：原本では単数形の trouser。掲載先の本文では trousers。訳には影響しない。
 - 「揺らめく青い炎（waving blue flame）」「青い反射（a blue reflection）」：掲載先の本文ではそれぞれ dame、resection と誤植されているが、原本に従った。
 - 「体の一部または全体（parts or the whole of my body）」：掲載先の本文では parts of the whole となっているが、原本の parts or the whole に従った。
